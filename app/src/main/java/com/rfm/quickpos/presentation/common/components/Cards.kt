@@ -1,3 +1,4 @@
+// app/src/main/java/com/rfm/quickpos/presentation/common/components/Cards.kt
 package com.rfm.quickpos.presentation.common.components
 
 import androidx.compose.foundation.BorderStroke
@@ -257,7 +258,8 @@ fun ProductCard(
 
                 // Discount tag if applicable
                 discountPercentage?.let {
-                    val rfmDiscountTag = RfmDiscountTag(
+                    // Using the RfmDiscountTag from RfmDiscountTag.kt
+                    RfmDiscountTag(
                         discountPercentage = it,
                         modifier = Modifier.padding(8.dp)
                     )
@@ -301,11 +303,6 @@ fun ProductCard(
             }
         }
     }
-}
-
-@Composable
-fun RfmDiscountTag(discountPercentage: Int, modifier: Modifier) {
-    TODO("Not yet implemented")
 }
 
 /**

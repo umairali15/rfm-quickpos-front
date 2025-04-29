@@ -1,3 +1,4 @@
+// app/src/main/java/com/rfm/quickpos/presentation/common/components/RfmTextField.kt
 package com.rfm.quickpos.presentation.common.components
 
 import androidx.compose.foundation.background
@@ -38,13 +39,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
-import com.rfm.quickpos.presentation.common.theme.TextFieldShape
+import com.rfm.quickpos.presentation.common.theme.posColors
 
 /**
- * Enhanced RFM styled text field with better visibility in light mode
+ * RFM styled text field with enhanced visibility
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +65,8 @@ fun RfmTextField(
     readOnly: Boolean = false,
     visualTransformation: VisualTransformation = VisualTransformation.None
 ) {
+    val textFieldShape = RoundedCornerShape(8.dp)
+
     Column(modifier = modifier) {
         if (label != null) {
             Text(
@@ -78,7 +79,7 @@ fun RfmTextField(
 
         // Enhanced text field with border and shadow for better visibility
         Card(
-            shape = TextFieldShape,
+            shape = textFieldShape,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ),
@@ -88,7 +89,7 @@ fun RfmTextField(
                 .fillMaxWidth()
                 .shadow(
                     elevation = if (isError) 0.dp else 2.dp,
-                    shape = TextFieldShape,
+                    shape = textFieldShape,
                     clip = false
                 )
                 .border(
@@ -97,7 +98,7 @@ fun RfmTextField(
                         MaterialTheme.colorScheme.error
                     else
                         MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                    shape = TextFieldShape
+                    shape = textFieldShape
                 )
         ) {
             TextField(
@@ -117,7 +118,7 @@ fun RfmTextField(
                 enabled = enabled,
                 readOnly = readOnly,
                 visualTransformation = visualTransformation,
-                shape = TextFieldShape,
+                shape = textFieldShape,
                 colors = TextFieldDefaults.textFieldColors(
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent,
@@ -140,7 +141,7 @@ fun RfmTextField(
 }
 
 /**
- * Enhanced RFM search bar with better visibility in light mode
+ * RFM styled search bar
  */
 @Composable
 fun RfmSearchBar(
@@ -149,11 +150,12 @@ fun RfmSearchBar(
     onSearch: () -> Unit,
     modifier: Modifier = Modifier,
     placeholder: String = "Search",
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    shape: RoundedCornerShape = RoundedCornerShape(8.dp)
 ) {
     // Search bar with subtle shadow and border
     Card(
-        shape = TextFieldShape,
+        shape = shape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
@@ -162,13 +164,13 @@ fun RfmSearchBar(
             .fillMaxWidth()
             .shadow(
                 elevation = 2.dp,
-                shape = TextFieldShape,
+                shape = shape,
                 clip = false
             )
             .border(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                shape = TextFieldShape
+                shape = shape
             )
     ) {
         BasicTextField(
@@ -234,35 +236,33 @@ fun RfmSearchBar(
 }
 
 /**
- * Enhanced RFM category chip with better visibility
+ * Enhanced category chip with better contrast
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RfmEnhancedCategoryChip(
+fun RfmCategoryChip(
     text: String,
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val backgroundColor = if (selected) {
-        MaterialTheme.colorScheme.primary
+        MaterialTheme.posColors.selectedCategoryChip
     } else {
-        MaterialTheme.colorScheme.surfaceVariant
+        MaterialTheme.posColors.categoryChipBackground
     }
 
     val textColor = if (selected) {
-        MaterialTheme.colorScheme.onPrimary
+        MaterialTheme.posColors.onSelectedCategoryChip
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
 
-    // Enhanced with border and shadow
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         color = backgroundColor,
         contentColor = textColor,
-        shadowElevation = if (selected) 4.dp else 1.dp,
+        shadowElevation = if (selected) 2.dp else 0.dp,
         border = if (!selected) {
             androidx.compose.foundation.BorderStroke(
                 width = 1.dp,
@@ -276,63 +276,5 @@ fun RfmEnhancedCategoryChip(
             style = MaterialTheme.typography.labelLarge,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun EnhancedTextFieldsPreview() {
-    RFMQuickPOSTheme {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            RfmTextField(
-                value = "Sample text",
-                onValueChange = {},
-                label = "Enhanced Text Field",
-                placeholder = "Enter some text",
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            RfmTextField(
-                value = "",
-                onValueChange = {},
-                label = "Empty Field with Error",
-                placeholder = "Required field",
-                isError = true,
-                errorText = "This field is required",
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            RfmSearchBar(
-                query = "",
-                onQueryChange = {},
-                onSearch = {},
-                placeholder = "Enhanced Search Bar",
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row {
-                RfmEnhancedCategoryChip(
-                    text = "Selected",
-                    selected = true,
-                    onClick = {}
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                RfmEnhancedCategoryChip(
-                    text = "Not Selected",
-                    selected = false,
-                    onClick = {}
-                )
-            }
-        }
     }
 }

@@ -2,7 +2,6 @@ package com.rfm.quickpos.presentation.features.auth
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -24,11 +22,14 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -49,14 +51,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.rfm.quickpos.R
 import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
-import com.rfm.quickpos.presentation.common.components.RfmTextField
-import com.rfm.quickpos.presentation.common.components.RfmTextButton
 import com.rfm.quickpos.presentation.common.theme.ButtonShape
+import com.rfm.quickpos.presentation.common.theme.TextFieldShape
 
 /**
  * Enhanced login screen with email/password authentication
- * Added proper card borders and elevation for better visibility in light mode
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onLoginClick: (email: String, password: String) -> Unit,
@@ -84,13 +85,18 @@ fun LoginScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             // Logo
-            Image(
-                painter = painterResource(id = R.drawable.rfm_quickpos_logo),
-                contentDescription = "RFM QuickPOS Logo",
+            Box(
+                contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .size(180.dp)
                     .padding(bottom = 24.dp)
-            )
+            ) {
+                // Use a safe resource reference
+                Image(
+                    painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                    contentDescription = "RFM QuickPOS Logo"
+                )
+            }
 
             // Welcome text
             Text(
@@ -139,11 +145,11 @@ fun LoginScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 24.dp)
                 ) {
-                    // Email field
-                    RfmTextField(
+                    // Email field - using standard TextField
+                    TextField(
                         value = email,
                         onValueChange = { email = it },
-                        label = "Email",
+                        label = { Text("Email") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Email,
@@ -159,16 +165,23 @@ fun LoginScreen(
                             onNext = { focusManager.moveFocus(FocusDirection.Down) }
                         ),
                         singleLine = true,
+                        shape = TextFieldShape,
+                        colors = TextFieldDefaults.textFieldColors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                            errorIndicatorColor = Color.Transparent
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Password field
-                    RfmTextField(
+                    // Password field - using standard TextField
+                    TextField(
                         value = password,
                         onValueChange = { password = it },
-                        label = "Password",
+                        label = { Text("Password") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Lock,
@@ -197,6 +210,13 @@ fun LoginScreen(
                             }
                         ),
                         singleLine = true,
+                        shape = TextFieldShape,
+                        colors = TextFieldDefaults.textFieldColors(
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            disabledIndicatorColor = Color.Transparent,
+                            errorIndicatorColor = Color.Transparent
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -207,7 +227,7 @@ fun LoginScreen(
                             .padding(vertical = 8.dp),
                         contentAlignment = Alignment.CenterEnd
                     ) {
-                        RfmTextButton(
+                        TextButton(
                             text = "Forgot Password?",
                             onClick = onForgotPasswordClick
                         )
@@ -215,7 +235,7 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Login button
+                    // Login button - using RfmPrimaryButton if available or fallback to standard Button
                     RfmPrimaryButton(
                         text = "Sign In",
                         onClick = { onLoginClick(email, password) },
@@ -232,17 +252,19 @@ fun LoginScreen(
 
             // PIN login option
             Surface(
-                modifier = Modifier
-                    .fillMaxWidth(),
+                onClick = onSwitchToPinLogin,
+                modifier = Modifier.fillMaxWidth(),
                 shape = ButtonShape,
                 color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ) {
-                RfmTextButton(
+                Text(
                     text = "Use PIN Login Instead",
-                    onClick = onSwitchToPinLogin,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(8.dp)
+                        .padding(16.dp)
                 )
             }
 
@@ -256,5 +278,26 @@ fun LoginScreen(
                 modifier = Modifier.padding(top = 16.dp)
             )
         }
+    }
+}
+
+/**
+ * Simple text button component for the login screen
+ */
+@Composable
+private fun TextButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.material3.TextButton(
+        onClick = onClick,
+        modifier = modifier
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
     }
 }

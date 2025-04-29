@@ -4,14 +4,12 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -21,11 +19,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -49,18 +44,16 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.rfm.quickpos.R
-import com.rfm.quickpos.domain.model.UiMode
 import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
 import com.rfm.quickpos.presentation.common.theme.ButtonShape
 import com.rfm.quickpos.presentation.common.theme.TextFieldShape
 
 /**
- * Enhanced PIN login screen that supports both cashier and kiosk modes
+ * Standard PIN login screen
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DualModePinLoginScreen(
-    onPinSubmit: (pin: String, mode: UiMode) -> Unit,
+fun PinLoginScreen(
+    onPinSubmit: (pin: String) -> Unit,
     onBackToEmailLogin: () -> Unit,
     modifier: Modifier = Modifier,
     userName: String = "User",
@@ -69,26 +62,11 @@ fun DualModePinLoginScreen(
     var pin by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
 
-    // Mode selection state
-    var selectedMode by remember { mutableStateOf(UiMode.CASHIER) }
-
-    // Predefined PINs (in a real app, these would be validated against the backend)
-    val cashierPin = "1234"
-    val kioskPin = "5678"
-
     // Auto-validate PIN when 4 digits are entered
     LaunchedEffect(pin) {
         if (pin.length == 4) {
             focusManager.clearFocus()
-
-            // Determine mode based on PIN
-            val mode = when (pin) {
-                cashierPin -> UiMode.CASHIER
-                kioskPin -> UiMode.KIOSK
-                else -> selectedMode // Keep selected mode if PIN doesn't match known PINs
-            }
-
-            onPinSubmit(pin, mode)
+            onPinSubmit(pin)
         }
     }
 
@@ -167,7 +145,7 @@ fun DualModePinLoginScreen(
                         .fillMaxWidth()
                         .padding(24.dp)
                 ) {
-                    // Pin input field - using standard TextField instead of RfmTextField
+                    // PIN input field
                     TextField(
                         value = pin,
                         onValueChange = { newPin ->
@@ -193,19 +171,13 @@ fun DualModePinLoginScreen(
                             onDone = {
                                 if (pin.length == 4) {
                                     focusManager.clearFocus()
-                                    // Determine mode based on PIN
-                                    val mode = when (pin) {
-                                        cashierPin -> UiMode.CASHIER
-                                        kioskPin -> UiMode.KIOSK
-                                        else -> selectedMode
-                                    }
-                                    onPinSubmit(pin, mode)
+                                    onPinSubmit(pin)
                                 }
                             }
                         ),
                         singleLine = true,
                         shape = TextFieldShape,
-                        colors = TextFieldDefaults.textFieldColors(
+                        colors = TextFieldDefaults.colors(
                             focusedIndicatorColor = Color.Transparent,
                             unfocusedIndicatorColor = Color.Transparent,
                             disabledIndicatorColor = Color.Transparent,
@@ -216,50 +188,12 @@ fun DualModePinLoginScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Mode selector (optional)
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        // Cashier mode option
-                        RadioButton(
-                            selected = selectedMode == UiMode.CASHIER,
-                            onClick = { selectedMode = UiMode.CASHIER }
-                        )
-                        Text(
-                            text = "Cashier Mode",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(start = 4.dp)
-                        )
-
-                        Spacer(modifier = Modifier.width(16.dp))
-
-                        // Kiosk mode option
-                        RadioButton(
-                            selected = selectedMode == UiMode.KIOSK,
-                            onClick = { selectedMode = UiMode.KIOSK }
-                        )
-                        Text(
-                            text = "Kiosk Mode",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(start = 4.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Submit button with enhanced styling
+                    // Submit button
                     RfmPrimaryButton(
                         text = "Submit PIN",
                         onClick = {
                             if (pin.length == 4) {
-                                // Determine mode based on PIN
-                                val mode = when (pin) {
-                                    cashierPin -> UiMode.CASHIER
-                                    kioskPin -> UiMode.KIOSK
-                                    else -> selectedMode
-                                }
-                                onPinSubmit(pin, mode)
+                                onPinSubmit(pin)
                             }
                         },
                         fullWidth = true,
@@ -269,46 +203,9 @@ fun DualModePinLoginScreen(
                 }
             }
 
-            // Mode selection help text
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Mode Selection",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-
-                    Divider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    Text(
-                        text = "Enter 1234 for Cashier Mode",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Text(
-                        text = "Enter 5678 for Kiosk Mode",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Switch to email login - using Surface with onClick
+            // Switch to email login
             Surface(
                 onClick = onBackToEmailLogin,
                 modifier = Modifier.fillMaxWidth(),

@@ -1,3 +1,5 @@
+// app/build.gradle.kts
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -60,6 +62,9 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.activity:activity-compose:1.8.0")
 
+    // The correct dependency for WindowCompat functionality
+    implementation("androidx.window:window:1.1.0")
+
     // Compose dependencies
     implementation(platform("androidx.compose:compose-bom:2023.08.00"))
     implementation("androidx.compose.ui:ui")
@@ -68,11 +73,8 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
-    // Navigation dependencies - Added for Jetpack Navigation
+    // Navigation dependencies
     implementation("androidx.navigation:navigation-compose:2.7.5")
-
-    // Coil for image loading (commented out for now)
-    // implementation("io.coil-kt:coil-compose:2.5.0")
 
     // Debug-only dependencies
     debugImplementation("androidx.compose.ui:ui-tooling")

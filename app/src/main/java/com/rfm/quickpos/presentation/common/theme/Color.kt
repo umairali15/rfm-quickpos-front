@@ -1,3 +1,4 @@
+// app/src/main/java/com/rfm/quickpos/presentation/common/theme/Color.kt
 package com.rfm.quickpos.presentation.common.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -24,8 +25,23 @@ val RfmOffWhite = Color(0xFFF8F8F8) // Default background in light mode
 val RfmLightGray = Color(0xFFEBEBEB) // Enhanced surface variant light for better borders
 val RfmMediumGray = Color(0xFF8E8E8E)
 val RfmWhite = Color(0xFFFFFFFF)
+val RfmBlack = Color(0xFF121212)
 
-// Light Theme Color Scheme (enhanced)
+// Named colors for specific use cases
+val ErrorColor = Color(0xFFBA1A1A)
+val SuccessColor = Color(0xFF00BF69)
+val WarningColor = Color(0xFFFFC107)
+val InfoColor = Color(0xFF0057B8)
+val PendingColor = Color(0xFFFF6B00)
+val DiscountColor = Color(0xFF00BF69)
+
+// Surface and background colors
+val SurfaceLight = Color(0xFFFFFFFF)
+val SurfaceDark = Color(0xFF252525)
+val SurfaceVariantLight = Color(0xFFF3F3F3)
+val SurfaceVariantDark = Color(0xFF2F2F2F)
+
+// Light Theme Color Scheme
 val RfmLightColorScheme = lightColorScheme(
     primary = RfmRed,
     onPrimary = Color.White,
@@ -59,7 +75,7 @@ val RfmLightColorScheme = lightColorScheme(
     outlineVariant = RfmLightGray
 )
 
-// Dark Theme Color Scheme (enhanced)
+// Dark Theme Color Scheme
 val RfmDarkColorScheme = darkColorScheme(
     primary = RfmRedLight,
     onPrimary = Color(0xFF690000),
@@ -96,35 +112,35 @@ val RfmDarkColorScheme = darkColorScheme(
 // Custom POS color palette enhanced for better visibility
 data class PosColorPalette(
     // Success State Colors
-    val success: Color = Color(0xFF00BF69),
+    val success: Color = SuccessColor,
     val onSuccess: Color = Color.White,
     val successContainer: Color = Color(0xFFBCF4D9), // More visible in light mode
     val onSuccessContainer: Color = Color(0xFF003917),
 
     // Warning State Colors
-    val warning: Color = Color(0xFFFFC107),
+    val warning: Color = WarningColor,
     val onWarning: Color = Color(0xFF261A00),
     val warningContainer: Color = Color(0xFFFFECB7),
     val onWarningContainer: Color = Color(0xFF261900),
 
     // Discount State Colors
-    val discount: Color = Color(0xFF00BF69),
+    val discount: Color = DiscountColor,
     val onDiscount: Color = Color.White,
 
     // Payment method icons
-    val cashIcon: Color = Color(0xFF00BF69),
-    val cardIcon: Color = Color(0xFF0057B8),
+    val cashIcon: Color = SuccessColor,
+    val cardIcon: Color = InfoColor,
 
     // Notification colors
-    val info: Color = Color(0xFF0057B8),
-    val pending: Color = Color(0xFFFF6B00),
+    val info: Color = InfoColor,
+    val pending: Color = PendingColor,
 
     // Receipt colors
     val receiptBackground: Color = Color.White,
     val receiptText: Color = Color(0xFF121212),
 
     // Status indicators
-    val activeStatus: Color = Color(0xFF00BF69),
+    val activeStatus: Color = SuccessColor,
     val inactiveStatus: Color = Color(0xFF999999),
 
     // Product grid
@@ -139,16 +155,16 @@ data class PosColorPalette(
     val outlinedButton: Color = Color.Transparent,
     val onOutlinedButton: Color = RfmRed,
 
-    // Card borders for light mode
-    val cardBorder: Color = Color(0xFFE0E0E0),  // Light border for cards
-    val cardShadow: Color = Color(0x1A000000)   // Subtle shadow for depth
+    // Card borders and shadows for better visibility in light mode
+    val cardBorder: Color = Color(0xFFE0E0E0),
+    val cardShadow: Color = Color(0x1A000000)
 )
 
 // Create a composition local provider for our extended color palette
 val LocalPosColorPalette = staticCompositionLocalOf { PosColorPalette() }
 
 // Dark mode version of our POS color palette (enhanced)
-private fun posDarkColorPalette(): PosColorPalette {
+internal fun posDarkColorPalette(): PosColorPalette {
     return PosColorPalette(
         success = Color(0xFF59DD95),
         onSuccess = Color(0xFF003917),
@@ -185,7 +201,7 @@ private fun posDarkColorPalette(): PosColorPalette {
         outlinedButton = Color.Transparent,
         onOutlinedButton = RfmRedLight,
 
-        cardBorder: Color = Color(0xFF3D3D3D),   // Darker border for cards
-    cardShadow: Color = Color(0x33000000)    // Stronger shadow for depth
+        cardBorder = Color(0xFF3D3D3D),
+        cardShadow = Color(0x33000000)
     )
 }

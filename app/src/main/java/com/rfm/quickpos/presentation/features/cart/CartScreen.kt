@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Receipt
@@ -29,6 +28,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -39,6 +40,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -49,10 +51,10 @@ import com.rfm.quickpos.presentation.common.components.RfmPayButton
 import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
 import com.rfm.quickpos.presentation.common.components.RfmQuantitySelector
 import com.rfm.quickpos.presentation.common.components.RfmSecondaryButton
-import com.rfm.quickpos.presentation.common.components.RfmTextField
 import com.rfm.quickpos.presentation.common.theme.PriceTextLarge
 import com.rfm.quickpos.presentation.common.theme.PriceTextMedium
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
+import com.rfm.quickpos.presentation.common.theme.TextFieldShape
 import com.rfm.quickpos.presentation.common.theme.posColors
 
 /**
@@ -221,16 +223,23 @@ fun CartScreen(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                RfmTextField(
+                                // Use standard TextField instead of RfmTextField
+                                TextField(
                                     value = state.discountCode,
                                     onValueChange = onDiscountCodeChange,
-                                    placeholder = "Enter discount code",
+                                    placeholder = { Text("Enter discount code") },
                                     leadingIcon = {
                                         Icon(
                                             imageVector = Icons.Default.LocalOffer,
                                             contentDescription = null
                                         )
                                     },
+                                    colors = TextFieldDefaults.textFieldColors(
+                                        focusedIndicatorColor = Color.Transparent,
+                                        unfocusedIndicatorColor = Color.Transparent,
+                                        disabledIndicatorColor = Color.Transparent
+                                    ),
+                                    shape = TextFieldShape,
                                     modifier = Modifier.weight(1f)
                                 )
 
@@ -265,11 +274,18 @@ fun CartScreen(
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
 
-                            RfmTextField(
+                            // Use standard TextField instead of RfmTextField
+                            TextField(
                                 value = state.note,
                                 onValueChange = onNoteChange,
-                                placeholder = "Add a note to this order",
+                                placeholder = { Text("Add a note to this order") },
                                 maxLines = 3,
+                                colors = TextFieldDefaults.textFieldColors(
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent,
+                                    disabledIndicatorColor = Color.Transparent
+                                ),
+                                shape = TextFieldShape,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }

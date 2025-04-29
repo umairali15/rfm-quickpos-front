@@ -1,3 +1,4 @@
+// app/src/main/java/com/rfm/quickpos/presentation/common/theme/Type.kt
 package com.rfm.quickpos.presentation.common.theme
 
 import androidx.compose.material3.Typography
