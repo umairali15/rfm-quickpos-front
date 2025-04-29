@@ -4,9 +4,11 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -24,11 +26,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -36,16 +40,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.presentation.common.theme.PriceTextSmall
+import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.presentation.common.theme.posColors
 
-// Define shapes here instead of relying on external references
-private val ProductCardShape = RoundedCornerShape(8.dp)
-private val PaymentMethodCardShape = RoundedCornerShape(12.dp)
+// Define shapes with consistent radius
+private val ProductCardShape = RoundedCornerShape(12.dp)
+private val PaymentMethodCardShape = RoundedCornerShape(16.dp)
 
 /**
- * Standard card with RFM styling
+ * Enhanced standard card with RFM styling
+ * Added proper borders and elevation for better visibility in light mode
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,7 +59,7 @@ fun RfmCard(
     shape: Shape = MaterialTheme.shapes.medium,
     containerColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = MaterialTheme.colorScheme.onSurface,
-    elevation: Float = 0f,
+    elevation: Float = 1f,
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
@@ -67,6 +72,11 @@ fun RfmCard(
                 contentColor = contentColor
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = elevation.dp),
+            // Added border for better visibility in light mode
+            border = BorderStroke(
+                width = 1.dp,
+                color = MaterialTheme.posColors.cardBorder.copy(alpha = 0.5f)
+            ),
             modifier = modifier
         ) {
             content()
@@ -79,6 +89,11 @@ fun RfmCard(
                 contentColor = contentColor
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = elevation.dp),
+            // Added border for better visibility in light mode
+            border = BorderStroke(
+                width = 1.dp,
+                color = MaterialTheme.posColors.cardBorder.copy(alpha = 0.5f)
+            ),
             modifier = modifier
         ) {
             content()
@@ -87,7 +102,8 @@ fun RfmCard(
 }
 
 /**
- * Elevated card with RFM styling
+ * Enhanced elevated card with RFM styling
+ * Increased elevation and shadow spread for better visibility
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,8 +124,17 @@ fun RfmElevatedCard(
                 containerColor = containerColor,
                 contentColor = contentColor
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = elevation.dp),
-            modifier = modifier
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = elevation.dp,
+                // Increased for better visibility
+                pressedElevation = (elevation + 2).dp,
+                focusedElevation = (elevation + 1).dp
+            ),
+            modifier = modifier.shadow(
+                elevation = elevation.dp,
+                shape = shape,
+                clip = false
+            )
         ) {
             content()
         }
@@ -121,7 +146,11 @@ fun RfmElevatedCard(
                 contentColor = contentColor
             ),
             elevation = CardDefaults.cardElevation(defaultElevation = elevation.dp),
-            modifier = modifier
+            modifier = modifier.shadow(
+                elevation = elevation.dp,
+                shape = shape,
+                clip = false
+            )
         ) {
             content()
         }
@@ -129,7 +158,8 @@ fun RfmElevatedCard(
 }
 
 /**
- * Outlined card with RFM styling
+ * Enhanced outlined card with RFM styling
+ * More pronounced border for better visibility
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -150,7 +180,7 @@ fun RfmOutlinedCard(
                 containerColor = containerColor,
                 contentColor = contentColor
             ),
-            border = BorderStroke(1.dp, outlineColor),
+            border = BorderStroke(1.5.dp, outlineColor), // Increased width
             modifier = modifier
         ) {
             content()
@@ -162,7 +192,7 @@ fun RfmOutlinedCard(
                 containerColor = containerColor,
                 contentColor = contentColor
             ),
-            border = BorderStroke(1.dp, outlineColor),
+            border = BorderStroke(1.5.dp, outlineColor), // Increased width
             modifier = modifier
         ) {
             content()
@@ -171,7 +201,8 @@ fun RfmOutlinedCard(
 }
 
 /**
- * Product card for the catalog
+ * Enhanced product card for the catalog
+ * Added border and better shadow for light mode visibility
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,7 +211,7 @@ fun ProductCard(
     price: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    imageUrl: String? = null, // Keep parameter but don't use it directly
+    imageUrl: String? = null,
     discountPercentage: Int? = null
 ) {
     Card(
@@ -190,7 +221,22 @@ fun ProductCard(
             containerColor = MaterialTheme.posColors.productCardBackground,
             contentColor = MaterialTheme.colorScheme.onSurface
         ),
-        modifier = modifier
+        // Added border for light mode visibility
+        border = BorderStroke(
+            width = 1.dp,
+            color = MaterialTheme.posColors.cardBorder.copy(alpha = 0.5f)
+        ),
+        // Enhanced elevation
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 4.dp
+        ),
+        modifier = modifier.shadow(
+            elevation = 2.dp,
+            shape = ProductCardShape,
+            spotColor = MaterialTheme.posColors.cardShadow,
+            ambientColor = MaterialTheme.posColors.cardShadow
+        )
     ) {
         Column {
             // Product image or placeholder
@@ -211,7 +257,7 @@ fun ProductCard(
 
                 // Discount tag if applicable
                 discountPercentage?.let {
-                    RfmDiscountTag(
+                    val rfmDiscountTag = RfmDiscountTag(
                         discountPercentage = it,
                         modifier = Modifier.padding(8.dp)
                     )
@@ -220,11 +266,11 @@ fun ProductCard(
 
             // Product info
             Column(
-                modifier = Modifier.padding(12.dp)
+                modifier = Modifier.padding(16.dp)
             ) {
                 Text(
                     text = name,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -238,7 +284,8 @@ fun ProductCard(
                     Text(
                         text = price,
                         style = PriceTextSmall,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
                     )
 
                     Spacer(modifier = Modifier.weight(1f))
@@ -256,8 +303,13 @@ fun ProductCard(
     }
 }
 
+@Composable
+fun RfmDiscountTag(discountPercentage: Int, modifier: Modifier) {
+    TODO("Not yet implemented")
+}
+
 /**
- * Payment method card (for selecting card/cash/etc.)
+ * Enhanced payment method card with better borders and contrast
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -283,7 +335,7 @@ fun PaymentMethodCard(
     val borderColor = if (isSelected) {
         MaterialTheme.colorScheme.primary
     } else {
-        MaterialTheme.colorScheme.outline
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
     }
 
     val iconColor = when (methodName.lowercase()) {
@@ -299,8 +351,18 @@ fun PaymentMethodCard(
             containerColor = backgroundColor,
             contentColor = contentColor
         ),
-        border = BorderStroke(1.dp, borderColor),
-        modifier = modifier
+        border = BorderStroke(
+            width = if (isSelected) 2.dp else 1.dp, // Thicker border when selected
+            color = borderColor
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = if (isSelected) 4.dp else 1.dp
+        ),
+        modifier = modifier.shadow(
+            elevation = if (isSelected) 4.dp else 1.dp,
+            shape = PaymentMethodCardShape,
+            clip = false
+        )
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -317,14 +379,15 @@ fun PaymentMethodCard(
 
             Text(
                 text = methodName,
-                style = MaterialTheme.typography.labelLarge
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
             )
         }
     }
 }
 
 /**
- * Status indicator card
+ * Enhanced status indicator card
  */
 @Composable
 fun StatusCard(
@@ -339,7 +402,8 @@ fun StatusCard(
     RfmElevatedCard(
         modifier = modifier,
         containerColor = containerColor,
-        elevation = 2f
+        elevation = 3f,
+        shape = RoundedCornerShape(12.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -376,119 +440,97 @@ fun StatusCard(
     }
 }
 
-/**
- * Discount tag component
- */
-@Composable
-fun RfmDiscountTag(
-    discountPercentage: Int,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        contentAlignment = Alignment.Center,
-        modifier = modifier
-            .clip(MaterialTheme.shapes.small)
-            .background(MaterialTheme.posColors.discount)
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    ) {
-        Text(
-            text = "-$discountPercentage%",
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.posColors.onDiscount,
-            fontWeight = FontWeight.Bold
-        )
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 fun CardsPreview() {
     RFMQuickPOSTheme {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            RfmCard(
-                modifier = Modifier.fillMaxWidth()
+        Surface {
+            Column(
+                modifier = Modifier.padding(16.dp)
             ) {
-                Text(
-                    text = "Standard Card",
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
+                RfmCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Standard Card",
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            RfmElevatedCard(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Elevated Card",
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
+                RfmElevatedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Elevated Card",
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            RfmOutlinedCard(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "Outlined Card",
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
+                RfmOutlinedCard(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Outlined Card",
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Row(modifier = Modifier.fillMaxWidth()) {
-                ProductCard(
-                    name = "Coffee",
-                    price = "AED 15.00",
-                    onClick = {},
-                    discountPercentage = 10,
-                    modifier = Modifier.weight(1f)
-                )
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    ProductCard(
+                        name = "Coffee",
+                        price = "AED 15.00",
+                        onClick = {},
+                        discountPercentage = 10,
+                        modifier = Modifier.weight(1f)
+                    )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
 
-                ProductCard(
-                    name = "Croissant",
-                    price = "AED 10.00",
-                    onClick = {},
-                    modifier = Modifier.weight(1f)
-                )
-            }
+                    ProductCard(
+                        name = "Croissant",
+                        price = "AED 10.00",
+                        onClick = {},
+                        modifier = Modifier.weight(1f)
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            Row(modifier = Modifier.fillMaxWidth()) {
-                PaymentMethodCard(
-                    methodName = "Card",
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    PaymentMethodCard(
+                        methodName = "Card",
+                        icon = Icons.Default.CreditCard,
+                        isSelected = true,
+                        onClick = {},
+                        modifier = Modifier.weight(1f)
+                    )
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    PaymentMethodCard(
+                        methodName = "Cash",
+                        icon = Icons.Default.Money,
+                        isSelected = false,
+                        onClick = {},
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                StatusCard(
+                    title = "Today's Sales",
+                    value = "AED 1,250.00",
                     icon = Icons.Default.CreditCard,
-                    isSelected = true,
-                    onClick = {},
-                    modifier = Modifier.weight(1f)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                PaymentMethodCard(
-                    methodName = "Cash",
-                    icon = Icons.Default.Money,
-                    isSelected = false,
-                    onClick = {},
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            StatusCard(
-                title = "Today's Sales",
-                value = "AED 1,250.00",
-                icon = Icons.Default.CreditCard,
-                modifier = Modifier.fillMaxWidth()
-            )
         }
     }
 }

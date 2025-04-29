@@ -9,13 +9,16 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -49,12 +52,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.rfm.quickpos.presentation.common.theme.PriceTextLarge
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import kotlinx.coroutines.delay
 
 /**
- * Payment screen for kiosk mode - streamlined with card-only option
+ * Fixed payment screen for kiosk mode - with proper text layout in payment cards
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -213,8 +217,8 @@ fun KioskPaymentScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Card payment - main option for kiosk
-                    KioskPaymentMethodCard(
+                    // Card payment - main option for kiosk (FIXED LAYOUT)
+                    FixedKioskPaymentMethodCard(
                         title = "Card",
                         subtitle = "Pay with credit or debit card",
                         icon = Icons.Default.CreditCard,
@@ -228,7 +232,7 @@ fun KioskPaymentScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Digital wallet option
-                    KioskPaymentMethodCard(
+                    FixedKioskPaymentMethodCard(
                         title = "Digital Wallet",
                         subtitle = "Pay with Apple Pay, Google Pay, etc.",
                         icon = Icons.Default.Payments,
@@ -241,7 +245,7 @@ fun KioskPaymentScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // QR code payment
-                    KioskPaymentMethodCard(
+                    FixedKioskPaymentMethodCard(
                         title = "Scan QR Code",
                         subtitle = "Use your phone to scan and pay",
                         icon = Icons.Default.QrCode,
@@ -257,11 +261,11 @@ fun KioskPaymentScreen(
 }
 
 /**
- * Large payment method card for kiosk mode
+ * Fixed payment method card for kiosk mode with improved text layout
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun KioskPaymentMethodCard(
+fun FixedKioskPaymentMethodCard(
     title: String,
     subtitle: String,
     icon: ImageVector,
@@ -270,7 +274,7 @@ fun KioskPaymentMethodCard(
 ) {
     Card(
         onClick = onClick,
-        shape = MaterialTheme.shapes.medium,
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
             contentColor = MaterialTheme.colorScheme.onSurface
@@ -279,37 +283,51 @@ fun KioskPaymentMethodCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier
             .fillMaxWidth()
-            .height(100.dp)
+            .height(110.dp) // Increased height to accommodate text
     ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier.fillMaxSize()
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-                modifier = Modifier.padding(16.dp)
+            // Icon on the left
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(60.dp)
+                    .padding(end = 16.dp)
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(40.dp)
+                    modifier = Modifier.size(36.dp)
                 )
+            }
 
-                Spacer(modifier = Modifier.height(8.dp))
-
+            // Text content with proper constraints
+            Column(
+                modifier = Modifier
+                    .weight(1f) // Take remaining space
+                    .padding(end = 8.dp) // Add padding to prevent text from touching the edge
+            ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1, // Limit to 1 line
+                    lineHeight = 28.sp
                 )
+
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
+                    maxLines = 2, // Allow 2 lines for subtitle
+                    lineHeight = 20.sp
                 )
             }
         }

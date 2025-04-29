@@ -22,8 +22,6 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -37,52 +35,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.rfm.quickpos.presentation.common.components.ProductCard
+import com.rfm.quickpos.presentation.common.components.RfmCartIcon
 import com.rfm.quickpos.presentation.common.components.RfmCategoryChip
 import com.rfm.quickpos.presentation.common.components.RfmLoadingIndicator
 import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
 import com.rfm.quickpos.presentation.common.components.RfmSearchBar
-import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 
 /**
- * Data class to represent a product category
- */
-data class ProductCategory(
-    val id: String,
-    val name: String
-)
-
-/**
- * Data class to represent a product
- */
-data class Product(
-    val id: String,
-    val name: String,
-    val price: Double,
-    val imageUrl: String? = null,
-    val categoryId: String,
-    val barcode: String? = null,
-    val discountPercentage: Int? = null,
-    val inStock: Boolean = true
-)
-
-/**
- * State for the catalog screen
- */
-data class CatalogState(
-    val isLoading: Boolean = false,
-    val categories: List<ProductCategory> = emptyList(),
-    val products: List<Product> = emptyList(),
-    val selectedCategoryId: String? = null,
-    val searchQuery: String = "",
-    val cartItemCount: Int = 0,
-    val error: String? = null
-)
-
-/**
- * Catalog screen for browsing and adding products to cart
+ * Updated Catalog screen with fixed cart badge
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,22 +98,13 @@ fun CatalogScreen(
                         )
                     }
 
-                    IconButton(onClick = onCartClick) {
-                        BadgedBox(
-                            badge = {
-                                if (state.cartItemCount > 0) {
-                                    Badge {
-                                        Text(text = state.cartItemCount.toString())
-                                    }
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingCart,
-                                contentDescription = "Cart"
-                            )
-                        }
-                    }
+                    // Use the enhanced cart icon component with proper badge
+                    RfmCartIcon(
+                        count = state.cartItemCount,
+                        icon = Icons.Default.ShoppingCart,
+                        contentDescription = "Cart",
+                        onClick = onCartClick
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -290,78 +243,11 @@ fun CatalogScreen(
                                 onClick = { onProductClick(product) },
                                 imageUrl = product.imageUrl,
                                 discountPercentage = product.discountPercentage,
-
                             )
                         }
                     }
                 }
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun CatalogScreenPreview() {
-    // Sample data
-    val categories = listOf(
-        ProductCategory("1", "Beverages"),
-        ProductCategory("2", "Food"),
-        ProductCategory("3", "General")
-    )
-
-    val products = listOf(
-        Product(
-            id = "1",
-            name = "Coffee",
-            price = 15.00,
-            categoryId = "1",
-            barcode = "5901234123457"
-        ),
-        Product(
-            id = "2",
-            name = "Croissant",
-            price = 10.00,
-            categoryId = "2",
-            barcode = "4003994155486",
-            discountPercentage = 10
-        ),
-        Product(
-            id = "3",
-            name = "Water Bottle",
-            price = 5.00,
-            categoryId = "1",
-            barcode = "7622210146083"
-        ),
-        Product(
-            id = "4",
-            name = "Sandwich",
-            price = 20.00,
-            categoryId = "2",
-            barcode = "1234567890123"
-        )
-    )
-
-    val state = CatalogState(
-        isLoading = false,
-        categories = categories,
-        products = products,
-        selectedCategoryId = null,
-        cartItemCount = 2
-    )
-
-    RFMQuickPOSTheme {
-        CatalogScreen(
-            state = state,
-            onBackClick = {},
-            onSearchQueryChange = {},
-            onSearchSubmit = {},
-            onCategorySelected = {},
-            onProductClick = {},
-            onAddToCart = {},
-            onScanBarcode = {},
-            onCartClick = {},
-            onAddCustomItem = {}
-        )
     }
 }

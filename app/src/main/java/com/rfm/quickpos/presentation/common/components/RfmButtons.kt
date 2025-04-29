@@ -2,6 +2,7 @@ package com.rfm.quickpos.presentation.common.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,17 +11,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
@@ -31,7 +35,8 @@ import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.presentation.common.theme.posColors
 
 /**
- * Primary button with RFM styling
+ * Enhanced primary button with RFM styling
+ * Added shadow and better contrast
  */
 @Composable
 fun RfmPrimaryButton(
@@ -45,7 +50,14 @@ fun RfmPrimaryButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = if (fullWidth) modifier.fillMaxWidth() else modifier,
+        modifier = if (fullWidth) {
+            modifier
+                .fillMaxWidth()
+                .shadow(4.dp, ButtonShape) // Added shadow for better visibility
+        } else {
+            modifier
+                .shadow(4.dp, ButtonShape) // Added shadow for better visibility
+        },
         enabled = enabled,
         shape = ButtonShape,
         colors = ButtonDefaults.buttonColors(
@@ -54,7 +66,12 @@ fun RfmPrimaryButton(
             disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
-        contentPadding = contentPadding
+        contentPadding = contentPadding,
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 6.dp,
+            disabledElevation = 0.dp
+        )
     ) {
         leadingIcon?.let {
             Icon(
@@ -72,7 +89,7 @@ fun RfmPrimaryButton(
 }
 
 /**
- * Secondary button with RFM styling
+ * Enhanced secondary button with RFM styling
  */
 @Composable
 fun RfmSecondaryButton(
@@ -86,7 +103,14 @@ fun RfmSecondaryButton(
 ) {
     FilledTonalButton(
         onClick = onClick,
-        modifier = if (fullWidth) modifier.fillMaxWidth() else modifier,
+        modifier = if (fullWidth) {
+            modifier
+                .fillMaxWidth()
+                .shadow(2.dp, ButtonShape) // Added shadow for better visibility
+        } else {
+            modifier
+                .shadow(2.dp, ButtonShape) // Added shadow for better visibility
+        },
         enabled = enabled,
         shape = ButtonShape,
         colors = ButtonDefaults.filledTonalButtonColors(
@@ -95,7 +119,12 @@ fun RfmSecondaryButton(
             disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
-        contentPadding = contentPadding
+        contentPadding = contentPadding,
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 1.dp,
+            pressedElevation = 4.dp,
+            disabledElevation = 0.dp
+        )
     ) {
         leadingIcon?.let {
             Icon(
@@ -113,7 +142,8 @@ fun RfmSecondaryButton(
 }
 
 /**
- * Outlined button with RFM styling
+ * Enhanced outlined button with RFM styling
+ * Increased border width for better visibility
  */
 @Composable
 fun RfmOutlinedButton(
@@ -135,7 +165,10 @@ fun RfmOutlinedButton(
             contentColor = MaterialTheme.posColors.onOutlinedButton,
             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
-        border = BorderStroke(1.dp, if (enabled) borderColor else MaterialTheme.colorScheme.outline),
+        border = BorderStroke(
+            width = 1.5.dp, // Increased width for better visibility
+            color = if (enabled) borderColor else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+        ),
         contentPadding = contentPadding
     ) {
         leadingIcon?.let {
@@ -154,7 +187,7 @@ fun RfmOutlinedButton(
 }
 
 /**
- * Text button with RFM styling
+ * Enhanced text button with better contrast
  */
 @Composable
 fun RfmTextButton(
@@ -169,7 +202,11 @@ fun RfmTextButton(
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
-        contentPadding = contentPadding
+        contentPadding = contentPadding,
+        colors = ButtonDefaults.textButtonColors(
+            contentColor = MaterialTheme.colorScheme.primary,
+            disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        )
     ) {
         leadingIcon?.let {
             Icon(
@@ -187,7 +224,7 @@ fun RfmTextButton(
 }
 
 /**
- * Pay button - Special case for checkout flow
+ * Enhanced pay button with better visibility
  */
 @Composable
 fun RfmPayButton(
@@ -201,7 +238,8 @@ fun RfmPayButton(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp),
+            .height(56.dp)
+            .shadow(4.dp, ButtonShape), // Added shadow for better visibility
         enabled = enabled,
         shape = ButtonShape,
         colors = ButtonDefaults.buttonColors(
@@ -210,6 +248,11 @@ fun RfmPayButton(
             disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
         ),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 6.dp,
+            disabledElevation = 0.dp
+        )
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically
@@ -237,44 +280,48 @@ fun RfmPayButton(
 
 @Preview(showBackground = true)
 @Composable
-fun ButtonsPreview() {
+fun EnhancedButtonsPreview() {
     RFMQuickPOSTheme {
-        Box(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            RfmPrimaryButton(
-                text = "Primary Button",
-                onClick = {},
-                fullWidth = true
-            )
+        Surface {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                RfmPrimaryButton(
+                    text = "Enhanced Primary Button",
+                    onClick = { },
+                    fullWidth = true
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            RfmSecondaryButton(
-                text = "Secondary Button",
-                onClick = {}
-            )
+                RfmSecondaryButton(
+                    text = "Enhanced Secondary Button",
+                    onClick = { },
+                    fullWidth = true
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            RfmOutlinedButton(
-                text = "Outlined Button",
-                onClick = {}
-            )
+                RfmOutlinedButton(
+                    text = "Enhanced Outlined Button",
+                    onClick = { },
+                    fullWidth = true
+                )
 
-            Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            RfmTextButton(
-                text = "Text Button",
-                onClick = {}
-            )
+                RfmTextButton(
+                    text = "Enhanced Text Button",
+                    onClick = { }
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            RfmPayButton(
-                amount = "244.00",
-                onClick = {}
-            )
+                RfmPayButton(
+                    amount = "244.00",
+                    onClick = { }
+                )
+            }
         }
     }
 }
