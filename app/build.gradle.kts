@@ -68,6 +68,9 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
+    // Coil for image loading (added to fix AsyncImage reference)
+    // implementation("io.coil-kt:coil-compose:2.5.0")
+
     // Debug-only dependencies
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

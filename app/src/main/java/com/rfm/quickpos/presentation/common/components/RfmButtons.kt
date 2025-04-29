@@ -26,8 +26,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.presentation.common.theme.ButtonShape
+import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.presentation.common.theme.posColors
 
 /**

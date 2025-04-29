@@ -27,9 +27,6 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,7 +34,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +44,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.rfm.quickpos.presentation.common.components.AppBarLogo
+import com.rfm.quickpos.presentation.common.components.RfmCard
+import com.rfm.quickpos.presentation.common.components.RfmElevatedCard
+import com.rfm.quickpos.presentation.common.components.RfmSearchBar
+import com.rfm.quickpos.presentation.common.components.RfmSectionHeader
+import com.rfm.quickpos.presentation.common.components.StatusCard
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.presentation.common.theme.posColors
 
@@ -69,42 +71,34 @@ fun DashboardScreen(
 ) {
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "RFM",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = MaterialTheme.colorScheme.primary
-                        )
+            Surface(
+                tonalElevation = 3.dp,
+                shadowElevation = 3.dp
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                ) {
+                    // Using our custom logo component
+                    AppBarLogo()
 
-                        Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.weight(1f))
 
-                        Text(
-                            text = "QuickPOS",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
-                },
-                actions = {
                     IconButton(onClick = onSettingsClicked) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings"
                         )
                     }
+
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .padding(end = 12.dp)
+                            .padding(start = 8.dp)
                             .size(40.dp)
-                            .clip(CircleShape)  // Using CircleShape from androidx.compose.foundation.shape
+                            .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Text(
@@ -114,7 +108,7 @@ fun DashboardScreen(
                         )
                     }
                 }
-            )
+            }
         }
     ) { paddingValues ->
         Column(
@@ -123,6 +117,17 @@ fun DashboardScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
+            // Search Bar
+            RfmSearchBar(
+                query = "",
+                onQueryChange = { /* Not implemented in demo */ },
+                onSearch = { /* Not implemented in demo */ },
+                placeholder = "Search products, orders, or customers",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            )
+
             // Date Range
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -133,7 +138,8 @@ fun DashboardScreen(
                 Icon(
                     imageVector = Icons.Default.CalendarToday,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
                 )
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -180,7 +186,13 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Revenue Chart Section
-            ElevatedCard(
+            RfmSectionHeader(
+                title = "Revenue",
+                actionText = "View Details",
+                onActionClick = { /* Not implemented in demo */ }
+            )
+
+            RfmElevatedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
@@ -188,13 +200,6 @@ fun DashboardScreen(
                 Column(
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    Text(
-                        text = "Revenue",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
                     // Simplified Chart Placeholder
                     Box(
                         modifier = Modifier
@@ -232,7 +237,7 @@ fun DashboardScreen(
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
-                                .clip(CircleShape)  // Using CircleShape
+                                .clip(CircleShape)
                                 .background(Color(0xFF00BF69))
                                 .align(Alignment.CenterStart)
                                 .padding(start = 80.dp)
@@ -268,124 +273,115 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Payment Methods Section
-            Row(
+            RfmSectionHeader(
+                title = "Payment Methods",
+                actionText = "This Week",
+                onActionClick = { /* Not implemented in demo */ }
+            )
+
+            RfmElevatedCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
             ) {
-                // Payment Methods Card
-                ElevatedCard(
-                    modifier = Modifier.weight(1f)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
+                    // Card vs Cash distribution
+                    Box(
+                        modifier = Modifier
+                            .size(120.dp)
+                            .aspectRatio(1f)
+                            .padding(8.dp)
                     ) {
-                        Text(
-                            text = "Payment Methods",
-                            style = MaterialTheme.typography.titleMedium
+                        // Cash segment (green)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = 100.dp,
+                                        topEnd = 0.dp,
+                                        bottomStart = 100.dp,
+                                        bottomEnd = 0.dp
+                                    )
+                                )
+                                .background(MaterialTheme.posColors.cashIcon)
                         )
 
-                        Spacer(modifier = Modifier.height(16.dp))
+                        // Card segment (blue)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(
+                                    RoundedCornerShape(
+                                        topStart = 0.dp,
+                                        topEnd = 100.dp,
+                                        bottomStart = 0.dp,
+                                        bottomEnd = 100.dp
+                                    )
+                                )
+                                .background(MaterialTheme.posColors.cardIcon)
+                        )
+                    }
 
-                        // Simplified Pie Chart
+                    // Legend
+                    Column(
+                        modifier = Modifier.padding(start = 16.dp)
+                    ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Card vs Cash distribution
                             Box(
                                 modifier = Modifier
-                                    .size(120.dp)
-                                    .aspectRatio(1f)
-                                    .padding(8.dp)
-                            ) {
-                                // Cash segment (green)
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(
-                                            RoundedCornerShape(
-                                                topStart = 100.dp,
-                                                topEnd = 0.dp,
-                                                bottomStart = 100.dp,
-                                                bottomEnd = 0.dp
-                                            )
-                                        )
-                                        .background(Color(0xFF00BF69))
-                                )
+                                    .size(12.dp)
+                                    .background(MaterialTheme.posColors.cashIcon)
+                            )
 
-                                // Card segment (blue)
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(
-                                            RoundedCornerShape(
-                                                topStart = 0.dp,
-                                                topEnd = 100.dp,
-                                                bottomStart = 0.dp,
-                                                bottomEnd = 100.dp
-                                            )
-                                        )
-                                        .background(Color(0xFF0057B8))
-                                )
-                            }
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                            // Legend
-                            Column(
-                                modifier = Modifier.padding(start = 16.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(12.dp)
-                                            .background(Color(0xFF00BF69))
-                                    )
+                            Text(
+                                text = "By Cash",
+                                style = MaterialTheme.typography.bodySmall
+                            )
 
-                                    Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                                    Text(
-                                        text = "By Cash",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
+                            Text(
+                                text = "${metrics.paymentMethodChart.cashPercentage.toInt()}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                                    Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.height(8.dp))
 
-                                    Text(
-                                        text = "${metrics.paymentMethodChart.cashPercentage.toInt()}%",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .background(MaterialTheme.posColors.cardIcon)
+                            )
 
-                                Spacer(modifier = Modifier.height(8.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(12.dp)
-                                            .background(Color(0xFF0057B8))
-                                    )
+                            Text(
+                                text = "By Card",
+                                style = MaterialTheme.typography.bodySmall
+                            )
 
-                                    Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                                    Text(
-                                        text = "By Card",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    Text(
-                                        text = "${metrics.paymentMethodChart.cardPercentage.toInt()}%",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
+                            Text(
+                                text = "${metrics.paymentMethodChart.cardPercentage.toInt()}%",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -394,10 +390,8 @@ fun DashboardScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Quick Actions Section
-            Text(
-                text = "Quick Actions",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            RfmSectionHeader(
+                title = "Quick Actions"
             )
 
             // Action Buttons Grid
@@ -467,61 +461,8 @@ fun DashboardScreen(
 }
 
 /**
- * Status card - For KPI metrics on dashboard
- */
-@Composable
-fun StatusCard(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier,
-    icon: ImageVector? = null,
-    iconTint: Color = MaterialTheme.colorScheme.primary
-) {
-    Card(
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                icon?.let {
-                    Icon(
-                        imageVector = it,
-                        contentDescription = null,
-                        tint = iconTint,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = value,
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-}
-
-/**
  * Quick Action Button Component
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QuickActionButton(
     icon: ImageVector,
@@ -529,11 +470,10 @@ fun QuickActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
+    RfmCard(
         onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        ),
+        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        elevation = 1f,
         modifier = modifier
     ) {
         Column(
