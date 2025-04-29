@@ -2,22 +2,9 @@ package com.rfm.quickpos.presentation.common.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.rfm.quickpos.R
-
-// Setup font family - Using system fonts initially, can be replaced with custom fonts
-// If adding custom fonts, uncomment and add resources:
-/*
-val RfmFontFamily = FontFamily(
-    Font(R.font.rfm_regular, FontWeight.Normal),
-    Font(R.font.rfm_medium, FontWeight.Medium),
-    Font(R.font.rfm_semibold, FontWeight.SemiBold),
-    Font(R.font.rfm_bold, FontWeight.Bold)
-)
-*/
 
 // Using system default fonts until custom fonts are added
 val RfmFontFamily = FontFamily.Default

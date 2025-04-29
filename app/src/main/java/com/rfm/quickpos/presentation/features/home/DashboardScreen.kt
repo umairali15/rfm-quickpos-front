@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -15,27 +14,23 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.InsertChart
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.outlined.AttachMoney
-import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.Receipt
 import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.outlined.ShoppingCart
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,28 +48,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.rfm.quickpos.presentation.common.components.StatusCard
-import com.rfm.quickpos.presentation.common.theme.CircularShape
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
-
-/**
- * Data for dashboard metrics
- */
-data class DashboardMetrics(
-    val totalSales: String,
-    val salesAmount: String,
-    val customers: String,
-    val dateRange: String,
-    val paymentMethodChart: PaymentMethodsData
-)
-
-/**
- * Data for payment methods chart
- */
-data class PaymentMethodsData(
-    val cashPercentage: Float,
-    val cardPercentage: Float
-)
+import com.rfm.quickpos.presentation.common.theme.posColors
 
 /**
  * Dashboard Screen with sales metrics
@@ -129,7 +104,7 @@ fun DashboardScreen(
                         modifier = Modifier
                             .padding(end = 12.dp)
                             .size(40.dp)
-                            .clip(CircularShape)
+                            .clip(CircleShape)  // Using CircleShape from androidx.compose.foundation.shape
                             .background(MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Text(
@@ -140,18 +115,6 @@ fun DashboardScreen(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onNewSaleClicked,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "New Sale"
-                )
-            }
         }
     ) { paddingValues ->
         Column(
@@ -168,7 +131,7 @@ fun DashboardScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.CalendarToday,
+                    imageVector = Icons.Default.CalendarToday,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -191,7 +154,7 @@ fun DashboardScreen(
                 StatusCard(
                     title = "Number of Sales",
                     value = metrics.totalSales,
-                    icon = Icons.Outlined.ShoppingCart,
+                    icon = Icons.Default.ShoppingCart,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -200,7 +163,7 @@ fun DashboardScreen(
                 StatusCard(
                     title = "Average Sale Amount",
                     value = metrics.salesAmount,
-                    icon = Icons.Outlined.AttachMoney,
+                    icon = Icons.Default.Money,
                     modifier = Modifier.weight(1f)
                 )
 
@@ -269,7 +232,7 @@ fun DashboardScreen(
                         Box(
                             modifier = Modifier
                                 .size(12.dp)
-                                .clip(CircularShape)
+                                .clip(CircleShape)  // Using CircleShape
                                 .background(Color(0xFF00BF69))
                                 .align(Alignment.CenterStart)
                                 .padding(start = 80.dp)
@@ -454,7 +417,7 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.width(16.dp))
 
                     QuickActionButton(
-                        icon = Icons.Outlined.Receipt,
+                        icon = Icons.Default.ShoppingCart,
                         label = "Orders",
                         onClick = onOrdersClicked,
                         modifier = Modifier.weight(1f)
@@ -476,7 +439,7 @@ fun DashboardScreen(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     QuickActionButton(
-                        icon = Icons.Default.ShoppingBag, // <-- Changed from Icons.Outlined.ShoppingBag
+                        icon = Icons.Default.ShoppingBag,
                         label = "Catalog",
                         onClick = onCatalogClicked,
                         modifier = Modifier.weight(1f)
@@ -499,6 +462,58 @@ fun DashboardScreen(
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
+}
+
+/**
+ * Status card - For KPI metrics on dashboard
+ */
+@Composable
+fun StatusCard(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    icon: ImageVector? = null,
+    iconTint: Color = MaterialTheme.colorScheme.primary
+) {
+    Card(
+        shape = MaterialTheme.shapes.medium,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                icon?.let {
+                    Icon(
+                        imageVector = it,
+                        contentDescription = null,
+                        tint = iconTint,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
         }
     }
 }
@@ -567,7 +582,7 @@ fun DashboardScreenPreview() {
             onCatalogClicked = {},
             onCustomersClicked = {},
             onSettingsClicked = {},
-            userName = "Nazim Ben Khalifa"
+            userName = "User"
         )
     }
 }
