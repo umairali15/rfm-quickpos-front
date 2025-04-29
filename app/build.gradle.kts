@@ -68,7 +68,10 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
 
-    // Coil for image loading (added to fix AsyncImage reference)
+    // Navigation dependencies - Added for Jetpack Navigation
+    implementation("androidx.navigation:navigation-compose:2.7.5")
+
+    // Coil for image loading (commented out for now)
     // implementation("io.coil-kt:coil-compose:2.5.0")
 
     // Debug-only dependencies

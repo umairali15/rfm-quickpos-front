@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CreditCard
@@ -31,16 +32,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
-import com.rfm.quickpos.presentation.common.theme.ProductCardShape
-import com.rfm.quickpos.presentation.common.theme.PaymentMethodCardShape
 import com.rfm.quickpos.presentation.common.theme.PriceTextSmall
 import com.rfm.quickpos.presentation.common.theme.posColors
+
+// Define shapes here instead of relying on external references
+private val ProductCardShape = RoundedCornerShape(8.dp)
+private val PaymentMethodCardShape = RoundedCornerShape(12.dp)
 
 /**
  * Standard card with RFM styling
@@ -178,8 +180,7 @@ fun ProductCard(
     price: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    imageUrl: String? = null,
-    inStock: Boolean = true,
+    imageUrl: String? = null, // Keep parameter but don't use it directly
     discountPercentage: Int? = null
 ) {
     Card(
@@ -199,7 +200,7 @@ fun ProductCard(
                     .fillMaxWidth()
                     .aspectRatio(1f)
             ) {
-                // For now, use a simple placeholder Box instead of AsyncImage
+                // Always use a placeholder box for now
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()

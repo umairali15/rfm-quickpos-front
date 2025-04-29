@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,18 +14,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.InsertChart
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,20 +41,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.rfm.quickpos.presentation.common.components.AppBarLogo
 import com.rfm.quickpos.presentation.common.components.RfmCard
 import com.rfm.quickpos.presentation.common.components.RfmElevatedCard
-import com.rfm.quickpos.presentation.common.components.RfmSearchBar
-import com.rfm.quickpos.presentation.common.components.RfmSectionHeader
 import com.rfm.quickpos.presentation.common.components.StatusCard
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
-import com.rfm.quickpos.presentation.common.theme.posColors
 
 /**
- * Dashboard Screen with sales metrics
+ * Simplified Dashboard Screen that serves as the home page of the app
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,32 +66,28 @@ fun DashboardScreen(
 ) {
     Scaffold(
         topBar = {
-            Surface(
-                tonalElevation = 3.dp,
-                shadowElevation = 3.dp
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                ) {
-                    // Using our custom logo component
-                    AppBarLogo()
-
-                    Spacer(modifier = Modifier.weight(1f))
-
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "RFM QuickPOS",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Bold
+                        )
+                    )
+                },
+                actions = {
                     IconButton(onClick = onSettingsClicked) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
+                            imageVector = Icons.Outlined.Settings,
                             contentDescription = "Settings"
                         )
                     }
 
+                    // User avatar
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .padding(start = 8.dp)
+                            .padding(end = 12.dp)
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primaryContainer)
@@ -108,7 +99,7 @@ fun DashboardScreen(
                         )
                     }
                 }
-            }
+            )
         }
     ) { paddingValues ->
         Column(
@@ -116,364 +107,165 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
-            // Search Bar
-            RfmSearchBar(
-                query = "",
-                onQueryChange = { /* Not implemented in demo */ },
-                onSearch = { /* Not implemented in demo */ },
-                placeholder = "Search products, orders, or customers",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            // Welcome message
+            Text(
+                text = "Hello, $userName",
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground
             )
 
-            // Date Range
+            Text(
+                text = "What would you like to do today?",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Key metrics in a row
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    imageVector = Icons.Default.CalendarToday,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(16.dp)
-                )
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = metrics.dateRange,
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            // Key Metrics Cards
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                StatusCard(
-                    title = "Number of Sales",
+                // Sales metric
+                MetricCard(
+                    title = "Sales",
                     value = metrics.totalSales,
-                    icon = Icons.Default.ShoppingCart,
-                    modifier = Modifier.weight(1f)
-                )
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                StatusCard(
-                    title = "Average Sale Amount",
-                    value = metrics.salesAmount,
                     icon = Icons.Default.Money,
+                    backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.weight(1f)
                 )
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
-                StatusCard(
-                    title = "Total Customers",
+                // Orders metric
+                MetricCard(
+                    title = "Avg. Sale",
+                    value = metrics.salesAmount,
+                    icon = Icons.Default.Receipt,
+                    backgroundColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Customers metric
+                MetricCard(
+                    title = "Customers",
                     value = metrics.customers,
                     icon = Icons.Default.People,
+                    backgroundColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                     modifier = Modifier.weight(1f)
                 )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Revenue Chart Section
-            RfmSectionHeader(
-                title = "Revenue",
-                actionText = "View Details",
-                onActionClick = { /* Not implemented in demo */ }
-            )
-
-            RfmElevatedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    // Simplified Chart Placeholder
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(160.dp)
-                    ) {
-                        // Here we would render a real chart using Compose Charts library
-                        // For the prototype, we'll just show colored lines
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(2.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .align(Alignment.Center)
-                        )
-
-                        // Green revenue line with a peak
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(80.dp)
-                                .clip(
-                                    RoundedCornerShape(
-                                        topStart = 0.dp,
-                                        topEnd = 0.dp,
-                                        bottomStart = 100.dp,
-                                        bottomEnd = 100.dp
-                                    )
-                                )
-                                .background(Color(0xFF00BF69).copy(alpha = 0.2f))
-                                .align(Alignment.Center)
-                        )
-
-                        // Highlight point
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF00BF69))
-                                .align(Alignment.CenterStart)
-                                .padding(start = 80.dp)
-                        )
-
-                        Text(
-                            text = "10:00",
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(start = 80.dp, top = 8.dp)
-                        )
-                    }
-
-                    // X-axis labels
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                    ) {
-                        listOf("8:00", "10:00", "14:00", "18:00", "22:00", "4:00").forEach { time ->
-                            Text(
-                                text = time,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Payment Methods Section
-            RfmSectionHeader(
-                title = "Payment Methods",
-                actionText = "This Week",
-                onActionClick = { /* Not implemented in demo */ }
-            )
-
-            RfmElevatedCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    // Card vs Cash distribution
-                    Box(
-                        modifier = Modifier
-                            .size(120.dp)
-                            .aspectRatio(1f)
-                            .padding(8.dp)
-                    ) {
-                        // Cash segment (green)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(
-                                    RoundedCornerShape(
-                                        topStart = 100.dp,
-                                        topEnd = 0.dp,
-                                        bottomStart = 100.dp,
-                                        bottomEnd = 0.dp
-                                    )
-                                )
-                                .background(MaterialTheme.posColors.cashIcon)
-                        )
-
-                        // Card segment (blue)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(
-                                    RoundedCornerShape(
-                                        topStart = 0.dp,
-                                        topEnd = 100.dp,
-                                        bottomStart = 0.dp,
-                                        bottomEnd = 100.dp
-                                    )
-                                )
-                                .background(MaterialTheme.posColors.cardIcon)
-                        )
-                    }
-
-                    // Legend
-                    Column(
-                        modifier = Modifier.padding(start = 16.dp)
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(12.dp)
-                                    .background(MaterialTheme.posColors.cashIcon)
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = "By Cash",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = "${metrics.paymentMethodChart.cashPercentage.toInt()}%",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(12.dp)
-                                    .background(MaterialTheme.posColors.cardIcon)
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = "By Card",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = "${metrics.paymentMethodChart.cardPercentage.toInt()}%",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Quick Actions Section
-            RfmSectionHeader(
-                title = "Quick Actions"
-            )
-
-            // Action Buttons Grid
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    QuickActionButton(
-                        icon = Icons.Default.ShoppingCart,
-                        label = "New Sale",
-                        onClick = onNewSaleClicked,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    QuickActionButton(
-                        icon = Icons.Default.ShoppingCart,
-                        label = "Orders",
-                        onClick = onOrdersClicked,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    QuickActionButton(
-                        icon = Icons.Default.InsertChart,
-                        label = "Reports",
-                        onClick = onReportsClicked,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    QuickActionButton(
-                        icon = Icons.Default.ShoppingBag,
-                        label = "Catalog",
-                        onClick = onCatalogClicked,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    QuickActionButton(
-                        icon = Icons.Default.Person,
-                        label = "Customers",
-                        onClick = onCustomersClicked,
-                        modifier = Modifier.weight(1f)
-                    )
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    // Empty space for balance
-                    Box(modifier = Modifier.weight(1f))
-                }
             }
 
             Spacer(modifier = Modifier.height(32.dp))
+
+            // Main actions grid - 2x3 layout
+            Text(
+                text = "Quick Actions",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // First row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // New Sale - featured prominently
+                ActionCard(
+                    title = "New Sale",
+                    icon = Icons.Default.ShoppingCart,
+                    onClick = onNewSaleClicked,
+                    backgroundColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Orders
+                ActionCard(
+                    title = "Orders",
+                    icon = Icons.Default.Receipt,
+                    onClick = onOrdersClicked,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Second row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Catalog
+                ActionCard(
+                    title = "Catalog",
+                    icon = Icons.Default.ShoppingBag,
+                    onClick = onCatalogClicked,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Reports
+                ActionCard(
+                    title = "Reports",
+                    icon = Icons.Default.Description,
+                    onClick = onReportsClicked,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Third row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Customers
+                ActionCard(
+                    title = "Customers",
+                    icon = Icons.Default.Person,
+                    onClick = onCustomersClicked,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Dashboard (placeholder)
+                ActionCard(
+                    title = "Dashboard",
+                    icon = Icons.Default.Dashboard,
+                    onClick = { /* Not implemented in demo */ },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 }
 
 /**
- * Quick Action Button Component
+ * Compact metric card component
  */
 @Composable
-fun QuickActionButton(
+fun MetricCard(
+    title: String,
+    value: String,
     icon: ImageVector,
-    label: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = MaterialTheme.colorScheme.surface,
+    contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
-    RfmCard(
-        onClick = onClick,
-        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        elevation = 1f,
+    RfmElevatedCard(
+        containerColor = backgroundColor,
+        contentColor = contentColor,
         modifier = modifier
     ) {
         Column(
@@ -482,17 +274,64 @@ fun QuickActionButton(
         ) {
             Icon(
                 imageVector = icon,
-                contentDescription = label,
-                tint = MaterialTheme.colorScheme.primary,
+                contentDescription = null,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = value,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+    }
+}
+
+/**
+ * Action card for quick access to app features
+ */
+@Composable
+fun ActionCard(
+    title: String,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant
+) {
+    RfmCard(
+        containerColor = backgroundColor,
+        contentColor = contentColor,
+        onClick = onClick,
+        elevation = 1f,
+        modifier = modifier.height(100.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
                 modifier = Modifier.size(32.dp)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Medium
             )
         }
     }
@@ -503,9 +342,9 @@ fun QuickActionButton(
 fun DashboardScreenPreview() {
     // Sample data
     val metrics = DashboardMetrics(
-        totalSales = "2,148M",
-        salesAmount = "16.94K",
-        customers = "126.8K",
+        totalSales = "2,148",
+        salesAmount = "16.94",
+        customers = "126.8",
         dateRange = "01.01.2024 - 01.01.2025",
         paymentMethodChart = PaymentMethodsData(
             cashPercentage = 35f,
@@ -514,15 +353,17 @@ fun DashboardScreenPreview() {
     )
 
     RFMQuickPOSTheme {
-        DashboardScreen(
-            metrics = metrics,
-            onNewSaleClicked = {},
-            onReportsClicked = {},
-            onOrdersClicked = {},
-            onCatalogClicked = {},
-            onCustomersClicked = {},
-            onSettingsClicked = {},
-            userName = "User"
-        )
+        Surface {
+            DashboardScreen(
+                metrics = metrics,
+                onNewSaleClicked = {},
+                onReportsClicked = {},
+                onOrdersClicked = {},
+                onCatalogClicked = {},
+                onCustomersClicked = {},
+                onSettingsClicked = {},
+                userName = "Ahmed"
+            )
+        }
     }
 }

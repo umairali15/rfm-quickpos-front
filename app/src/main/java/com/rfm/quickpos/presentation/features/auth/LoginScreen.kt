@@ -32,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -57,7 +56,8 @@ fun LoginScreen(
     onLoginClick: (email: String, password: String) -> Unit,
     onForgotPasswordClick: () -> Unit,
     modifier: Modifier = Modifier,
-    errorMessage: String? = null
+    errorMessage: String? = null,
+    onSwitchToPinLogin: () -> Unit = {}
 ) {
     val focusManager = LocalFocusManager.current
     var email by remember { mutableStateOf("") }
@@ -197,6 +197,14 @@ fun LoginScreen(
                 onClick = { onLoginClick(email, password) },
                 fullWidth = true,
                 enabled = email.isNotBlank() && password.isNotBlank()
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // PIN login option
+            RfmTextButton(
+                text = "Use PIN Login Instead",
+                onClick = onSwitchToPinLogin
             )
 
             Spacer(modifier = Modifier.weight(1f))
