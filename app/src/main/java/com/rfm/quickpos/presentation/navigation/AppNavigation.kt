@@ -38,10 +38,10 @@ import java.util.Date
 /**
  * Define all navigation routes in the app
  */
-sealed class Screen(val route: String) {
-    object Login : Screen("login")
-    object PinLogin : Screen("pin_login")
-    object Dashboard : Screen("dashboard")
+sealed class MainScreen(val route: String) {
+    object Login : MainScreen("login")
+    object PinLogin : MainScreen("pin_login")
+    object Dashboard : MainScreen("dashboard")
     object Catalog : Screen("catalog")
     object Cart : Screen("cart")
     object Payment : Screen("payment")
@@ -57,7 +57,7 @@ sealed class Screen(val route: String) {
 @Composable
 fun AppNavigation(
     navController: NavHostController = rememberNavController(),
-    startDestination: String = Screen.Login.route
+    startDestination: String = MainScreen.Login.route
 ) {
     // Sample data setup for preview/demo purposes
     val sampleCategories = listOf(
@@ -115,7 +115,7 @@ fun AppNavigation(
         startDestination = startDestination
     ) {
         // Email/Password Login
-        composable(Screen.Login.route) {
+        composable(MainScreen.Login.route) {
             var errorMessage by remember { mutableStateOf<String?>(null) }
 
             LoginScreen(
@@ -124,7 +124,7 @@ fun AppNavigation(
                     if (email.isNotEmpty() && password.isNotEmpty()) {
                         navController.navigate(Screen.Dashboard.route) {
                             // Clear back stack so user can't go back to login
-                            popUpTo(Screen.Login.route) { inclusive = true }
+                            popUpTo(MainScreen.Login.route) { inclusive = true }
                         }
                         errorMessage = null
                     } else {
@@ -135,14 +135,14 @@ fun AppNavigation(
                     // Handle forgot password
                 },
                 onSwitchToPinLogin = {
-                    navController.navigate(Screen.PinLogin.route)
+                    navController.navigate(MainScreen.PinLogin.route)
                 },
                 errorMessage = errorMessage
             )
         }
 
         // PIN Login
-        composable(Screen.PinLogin.route) {
+        composable(MainScreen.PinLogin.route) {
             var errorMessage by remember { mutableStateOf<String?>(null) }
 
             PinLoginScreen(
@@ -151,7 +151,7 @@ fun AppNavigation(
                     if (pin == "1234") {
                         navController.navigate(Screen.Dashboard.route) {
                             // Clear back stack so user can't go back to login
-                            popUpTo(Screen.Login.route) { inclusive = true }
+                            popUpTo(MainScreen.Login.route) { inclusive = true }
                         }
                         errorMessage = null
                     } else {
@@ -159,9 +159,9 @@ fun AppNavigation(
                     }
                 },
                 onBackToEmailLogin = {
-                    navController.navigate(Screen.Login.route) {
+                    navController.navigate(MainScreen.Login.route) {
                         // Clear back stack
-                        popUpTo(Screen.PinLogin.route) { inclusive = true }
+                        popUpTo(MainScreen.PinLogin.route) { inclusive = true }
                     }
                 },
                 userName = "Cashier",
@@ -191,7 +191,7 @@ fun AppNavigation(
                 onSettingsClicked = {
                     // In a real app, navigate to settings
                     // For demo, go back to login
-                    navController.navigate(Screen.Login.route) {
+                    navController.navigate(MainScreen.Login.route) {
                         popUpTo(Screen.Dashboard.route) { inclusive = true }
                     }
                 },

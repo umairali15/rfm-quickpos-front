@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,11 +34,6 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,11 +43,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.rfm.quickpos.presentation.common.components.RfmDivider
 import com.rfm.quickpos.presentation.common.components.RfmOutlinedButton
-import com.rfm.quickpos.presentation.common.components.RfmPayButton
 import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
 import com.rfm.quickpos.presentation.common.components.RfmQuantitySelector
 import com.rfm.quickpos.presentation.common.components.RfmSecondaryButton
-import com.rfm.quickpos.presentation.common.theme.PriceTextLarge
 import com.rfm.quickpos.presentation.common.theme.PriceTextMedium
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.presentation.common.theme.TextFieldShape
@@ -176,7 +170,8 @@ fun CartScreen(
 
                     RfmPrimaryButton(
                         text = "Continue Shopping",
-                        onClick = onBackClick
+                        onClick = onBackClick,
+                        leadingIcon = Icons.Default.QrCode
                     )
                 }
             }
@@ -388,7 +383,8 @@ fun CartScreen(
                         RfmPrimaryButton(
                             text = "Proceed to Payment",
                             onClick = onCheckoutClick,
-                            fullWidth = true
+                            fullWidth = true,
+                            leadingIcon = Icons.Default.QrCode
                         )
                     }
                 }

@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,7 +29,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -178,7 +178,8 @@ fun KioskCartScreen(
                         onClick = {
                             resetInactivityTimer()
                             onBackClick()
-                        }
+                        },
+                        leadingIcon = Icons.Default.QrCode
                     )
                 }
             }
@@ -293,8 +294,9 @@ fun KioskCartScreen(
                                 resetInactivityTimer()
                                 onCheckoutClick()
                             },
+                            modifier = Modifier.height(64.dp),
                             fullWidth = true,
-                            modifier = Modifier.height(64.dp)
+                            leadingIcon = Icons.Default.QrCode
                         )
                     }
                 }

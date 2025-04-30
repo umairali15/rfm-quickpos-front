@@ -18,7 +18,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -36,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -427,8 +426,9 @@ fun PaymentScreen(
             RfmPrimaryButton(
                 text = "Pay Now",
                 onClick = onProcessPayment,
+                enabled = canProcessPayment && !state.isProcessing,
                 fullWidth = true,
-                enabled = canProcessPayment && !state.isProcessing
+                leadingIcon = Icons.Default.QrCode
             )
 
             if (state.isProcessing) {

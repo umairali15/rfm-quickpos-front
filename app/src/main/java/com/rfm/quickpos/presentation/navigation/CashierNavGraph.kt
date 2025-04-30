@@ -7,16 +7,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.rfm.quickpos.presentation.features.cart.CartItem
 import com.rfm.quickpos.presentation.features.cart.CartScreen
 import com.rfm.quickpos.presentation.features.cart.CartState
 import com.rfm.quickpos.presentation.features.catalog.CatalogScreen
 import com.rfm.quickpos.presentation.features.catalog.CatalogState
+import com.rfm.quickpos.presentation.features.catalog.ItemDetailScreen
+import com.rfm.quickpos.presentation.features.catalog.ItemModifications
 import com.rfm.quickpos.presentation.features.catalog.Product
 import com.rfm.quickpos.presentation.features.catalog.ProductCategory
+import com.rfm.quickpos.presentation.features.error.ErrorScreen
+import com.rfm.quickpos.presentation.features.error.ErrorType
 import com.rfm.quickpos.presentation.features.history.DateRange
 import com.rfm.quickpos.presentation.features.history.SaleHistoryItem
 import com.rfm.quickpos.presentation.features.history.SaleStatus
@@ -32,7 +38,41 @@ import com.rfm.quickpos.presentation.features.payment.PaymentSuccessScreen
 import com.rfm.quickpos.presentation.features.payment.PaymentSuccessState
 import com.rfm.quickpos.presentation.features.payment.SplitPaymentData
 import com.rfm.quickpos.presentation.features.sale.AddItemBottomSheet
+import com.rfm.quickpos.presentation.features.shift.CashMovementScreen
+import com.rfm.quickpos.presentation.features.shift.CashMovementType
+import com.rfm.quickpos.presentation.features.shift.CloseShiftScreen
+import com.rfm.quickpos.presentation.features.shift.OpenShiftScreen
+import com.rfm.quickpos.presentation.features.shift.ShiftDetail
+import com.rfm.quickpos.presentation.features.shift.ShiftStatus
+import com.rfm.quickpos.presentation.features.shift.ShiftSummary
+import com.rfm.quickpos.presentation.features.shift.ShiftSummaryScreen
+import com.rfm.quickpos.presentation.features.splash.SplashScreen
 import java.util.Date
+
+/**
+ * Define all navigation routes in the Cashier mode
+ */
+sealed class Screen(val route: String) {
+    object Dashboard : Screen("dashboard")
+    object Catalog : Screen("catalog")
+    object Cart : Screen("cart")
+    object Payment : Screen("payment")
+    object PaymentSuccess : Screen("payment_success")
+    object SalesHistory : Screen("sales_history")
+
+    // New screens
+    object Splash : Screen("splash")
+    object Error : Screen("error/{errorType}") {
+        fun createRoute(errorType: ErrorType) = "error/${errorType.name}"
+    }
+    object OpenShift : Screen("open_shift")
+    object CashMovement : Screen("cash_movement")
+    object CloseShift : Screen("close_shift")
+    object ShiftSummary : Screen("shift_summary")
+    object ItemDetail : Screen("item_detail/{productId}") {
+        fun createRoute(productId: String) = "item_detail/$productId"
+    }
+}
 
 /**
  * Main standalone Cashier mode navigation
@@ -92,6 +132,16 @@ fun CashierNavGraph(navController: NavController) {
 
     // Current screen being displayed
     val currentScreen = when (navController.currentDestination?.route) {
+        Screen.Splash.route -> {
+            SplashScreen(
+                onInitializationComplete = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Splash.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         Screen.Dashboard.route -> {
             DashboardScreen(
                 metrics = dashboardMetrics,
@@ -176,8 +226,9 @@ fun CashierNavGraph(navController: NavController) {
                 onCategorySelected = {
                     // Filter by category
                 },
-                onProductClick = {
-                    // Show product details
+                onProductClick = { product ->
+                    // Navigate to item detail screen
+                    navController.navigate(Screen.ItemDetail.createRoute(product.id))
                 },
                 onAddToCart = {
                     // Add to cart
@@ -408,6 +459,95 @@ fun CashierNavGraph(navController: NavController) {
             )
         }
 
+        // New screens
+
+        Screen.OpenShift.route -> {
+            OpenShiftScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onOpenShift = { openingAmount, notes ->
+                    // Handle opening shift
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.OpenShift.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        Screen.CashMovement.route -> {
+            CashMovementScreen(
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onCashMovementSubmit = { type, amount, reason, note ->
+                    // Handle cash movement
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        Screen.CloseShift.route -> {
+            val shiftSummary = ShiftSummary(
+                openingBalance = 500.0,
+                cashSales = 1234.56,
+                cashIn = 200.0,
+                cashOut = 300.0,
+                expectedCash = 1634.56,
+                startTime = Date(System.currentTimeMillis() - 28800000) // 8 hours ago
+            )
+
+            CloseShiftScreen(
+                shiftSummary = shiftSummary,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onCloseShift = { closingAmount, notes, printReceipt, emailReceipt ->
+                    // Handle closing shift
+                    navController.navigate(Screen.ShiftSummary.route)
+                }
+            )
+        }
+
+        Screen.ShiftSummary.route -> {
+            // Create a sample shift summary for demonstration
+            val currentTime = System.currentTimeMillis()
+            val startTime = Date(currentTime - 28800000) // 8 hours ago
+
+            val sampleShift = ShiftDetail(
+                id = "shift123",
+                openedAt = startTime,
+                closedAt = Date(currentTime),
+                openingBalance = 500.0,
+                closingBalance = 1430.0,
+                expectedClosingBalance = 1450.0,
+                variance = -20.0,
+                cashMovements = emptyList(), // You'd populate this with real data
+                totalCashSales = 900.0,
+                totalCardSales = 1500.0,
+                totalWalletSales = 300.0,
+                totalRefunds = 120.0,
+                openedByUserId = "user1",
+                openedByUserName = "John Smith",
+                closedByUserId = "user1",
+                closedByUserName = "John Smith",
+                status = ShiftStatus.CLOSED
+            )
+
+            ShiftSummaryScreen(
+                shift = sampleShift,
+                onBackClick = {
+                    navController.popBackStack()
+                },
+                onExportCsv = {
+                    // Handle export to CSV
+                },
+                onEmailReport = {
+                    // Handle email report
+                }
+            )
+        }
+
         else -> {
             // Default to dashboard if route doesn't match
             navController.navigate(Screen.Dashboard.route)
@@ -420,6 +560,10 @@ fun CashierNavGraph(navController: NavController) {
  * Extension function to add cashier screens to a NavGraphBuilder
  */
 fun NavGraphBuilder.cashierScreens(navController: NavController) {
+    composable(Screen.Splash.route) {
+        CashierNavGraph(navController)
+    }
+
     composable(Screen.Dashboard.route) {
         CashierNavGraph(navController)
     }
@@ -443,6 +587,66 @@ fun NavGraphBuilder.cashierScreens(navController: NavController) {
     composable(Screen.SalesHistory.route) {
         CashierNavGraph(navController)
     }
+
+    // New screens
+    composable(
+        route = Screen.Error.route,
+        arguments = listOf(navArgument("errorType") { type = NavType.StringType })
+    ) {
+        val errorTypeStr = it.arguments?.getString("errorType") ?: ErrorType.UNKNOWN.name
+        val errorType = try {
+            ErrorType.valueOf(errorTypeStr)
+        } catch (e: Exception) {
+            ErrorType.UNKNOWN
+        }
+
+        ErrorScreen(
+            errorType = errorType,
+            onRetryClick = {
+                navController.popBackStack()
+            },
+            onContactSupportClick = {
+                // Handle contact support
+            }
+        )
+    }
+
+    composable(Screen.OpenShift.route) {
+        CashierNavGraph(navController)
+    }
+
+    composable(Screen.CashMovement.route) {
+        CashierNavGraph(navController)
+    }
+
+    composable(Screen.CloseShift.route) {
+        CashierNavGraph(navController)
+    }
+
+    composable(Screen.ShiftSummary.route) {
+        CashierNavGraph(navController)
+    }
+
+    composable(
+        route = Screen.ItemDetail.route,
+        arguments = listOf(navArgument("productId") { type = NavType.StringType })
+    ) {
+        val productId = it.arguments?.getString("productId") ?: ""
+        val product = sampleProducts.find { it.id == productId } ?:
+        Product(id = productId, name = "Unknown Product", price = 0.0, categoryId = "")
+
+        ItemDetailScreen(
+            product = product,
+            onClose = {
+                navController.popBackStack()
+            },
+            onAddToCart = { product, modifications ->
+                // Handle adding to cart
+                navController.popBackStack()
+            },
+            userCanOverridePrice = true // Based on user role
+        )
+    }
 }
 
 /**
@@ -453,8 +657,41 @@ fun StandaloneCashierNavHost() {
     val navController = rememberNavController()
     NavHost(
         navController = navController,
-        startDestination = Screen.Dashboard.route
+        startDestination = Screen.Splash.route
     ) {
         cashierScreens(navController)
     }
 }
+
+// Sample products for ItemDetail screen
+private val sampleProducts = listOf(
+    Product(
+        id = "1",
+        name = "Coffee",
+        price = 15.00,
+        categoryId = "1",
+        barcode = "5901234123457"
+    ),
+    Product(
+        id = "2",
+        name = "Croissant",
+        price = 10.00,
+        categoryId = "2",
+        barcode = "4003994155486",
+        discountPercentage = 10
+    ),
+    Product(
+        id = "3",
+        name = "Water Bottle",
+        price = 5.00,
+        categoryId = "1",
+        barcode = "7622210146083"
+    ),
+    Product(
+        id = "4",
+        name = "Sandwich",
+        price = 20.00,
+        categoryId = "2",
+        barcode = "1234567890123"
+    )
+)
