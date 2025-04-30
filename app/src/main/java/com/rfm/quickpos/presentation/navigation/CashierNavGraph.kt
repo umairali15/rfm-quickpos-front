@@ -1,43 +1,41 @@
 package com.rfm.quickpos.presentation.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.navigation.NavController
-import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.rfm.quickpos.presentation.features.cart.CartItem
-import com.rfm.quickpos.presentation.features.cart.CartScreen
-import com.rfm.quickpos.presentation.features.cart.CartState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.rfm.quickpos.domain.model.UiMode
 import com.rfm.quickpos.presentation.features.catalog.CatalogScreen
 import com.rfm.quickpos.presentation.features.catalog.CatalogState
 import com.rfm.quickpos.presentation.features.catalog.ItemDetailScreen
-import com.rfm.quickpos.presentation.features.catalog.ItemModifications
 import com.rfm.quickpos.presentation.features.catalog.Product
 import com.rfm.quickpos.presentation.features.catalog.ProductCategory
+import com.rfm.quickpos.presentation.features.cart.CartScreen
+import com.rfm.quickpos.presentation.features.cart.CartState
+import com.rfm.quickpos.presentation.features.cart.CartItem
 import com.rfm.quickpos.presentation.features.error.ErrorScreen
 import com.rfm.quickpos.presentation.features.error.ErrorType
+import com.rfm.quickpos.presentation.features.home.DashboardMetrics
+import com.rfm.quickpos.presentation.features.home.DashboardScreen
+import com.rfm.quickpos.presentation.features.home.PaymentMethodsData
+import com.rfm.quickpos.presentation.features.payment.PaymentScreen
+import com.rfm.quickpos.presentation.features.payment.PaymentState
+import com.rfm.quickpos.presentation.features.payment.PaymentMethod
+import com.rfm.quickpos.presentation.features.payment.PaymentSuccessScreen
+import com.rfm.quickpos.presentation.features.payment.PaymentSuccessState
+import com.rfm.quickpos.presentation.features.payment.SplitPaymentData
+import com.rfm.quickpos.presentation.features.sale.AddItemBottomSheet
 import com.rfm.quickpos.presentation.features.history.DateRange
 import com.rfm.quickpos.presentation.features.history.SaleHistoryItem
 import com.rfm.quickpos.presentation.features.history.SaleStatus
 import com.rfm.quickpos.presentation.features.history.SalesHistoryScreen
 import com.rfm.quickpos.presentation.features.history.SalesHistoryState
-import com.rfm.quickpos.presentation.features.home.DashboardMetrics
-import com.rfm.quickpos.presentation.features.home.DashboardScreen
-import com.rfm.quickpos.presentation.features.home.PaymentMethodsData
-import com.rfm.quickpos.presentation.features.payment.PaymentMethod
-import com.rfm.quickpos.presentation.features.payment.PaymentScreen
-import com.rfm.quickpos.presentation.features.payment.PaymentState
-import com.rfm.quickpos.presentation.features.payment.PaymentSuccessScreen
-import com.rfm.quickpos.presentation.features.payment.PaymentSuccessState
-import com.rfm.quickpos.presentation.features.payment.SplitPaymentData
-import com.rfm.quickpos.presentation.features.sale.AddItemBottomSheet
 import com.rfm.quickpos.presentation.features.shift.CashMovementScreen
 import com.rfm.quickpos.presentation.features.shift.CashMovementType
 import com.rfm.quickpos.presentation.features.shift.CloseShiftScreen
@@ -47,38 +45,20 @@ import com.rfm.quickpos.presentation.features.shift.ShiftStatus
 import com.rfm.quickpos.presentation.features.shift.ShiftSummary
 import com.rfm.quickpos.presentation.features.shift.ShiftSummaryScreen
 import com.rfm.quickpos.presentation.features.splash.SplashScreen
+import com.rfm.quickpos.presentation.debug.DebugMenu
 import java.util.Date
 
 /**
- * Define all navigation routes in the Cashier mode
- */
-sealed class Screen(val route: String) {
-    object Dashboard : Screen("dashboard")
-    object Catalog : Screen("catalog")
-    object Cart : Screen("cart")
-    object Payment : Screen("payment")
-    object PaymentSuccess : Screen("payment_success")
-    object SalesHistory : Screen("sales_history")
-
-    // New screens
-    object Splash : Screen("splash")
-    object Error : Screen("error/{errorType}") {
-        fun createRoute(errorType: ErrorType) = "error/${errorType.name}"
-    }
-    object OpenShift : Screen("open_shift")
-    object CashMovement : Screen("cash_movement")
-    object CloseShift : Screen("close_shift")
-    object ShiftSummary : Screen("shift_summary")
-    object ItemDetail : Screen("item_detail/{productId}") {
-        fun createRoute(productId: String) = "item_detail/$productId"
-    }
-}
-
-/**
- * Main standalone Cashier mode navigation
+ * Properly structured navigation graph for Cashier mode
+ * Uses standard NavHost with composable() destinations
  */
 @Composable
-fun CashierNavGraph(navController: NavController) {
+fun ProperCashierNavGraph(
+    navController: NavHostController,
+    uiMode: UiMode,
+    onChangeMode: (UiMode) -> Unit,
+    startDestination: String = Screen.Dashboard.route
+) {
     // Sample data for the screens
     val sampleCategories = listOf(
         ProductCategory("1", "Beverages"),
@@ -130,9 +110,16 @@ fun CashierNavGraph(navController: NavController) {
         )
     )
 
-    // Current screen being displayed
-    val currentScreen = when (navController.currentDestination?.route) {
-        Screen.Splash.route -> {
+    // For debug menu
+    var showDebugMenu by remember { mutableStateOf(false) }
+
+    // Define the navigation graph using NavHost
+    NavHost(
+        navController = navController,
+        startDestination = startDestination
+    ) {
+        // Splash Screen
+        composable(Screen.Splash.route) {
             SplashScreen(
                 onInitializationComplete = {
                     navController.navigate(Screen.Dashboard.route) {
@@ -142,14 +129,15 @@ fun CashierNavGraph(navController: NavController) {
             )
         }
 
-        Screen.Dashboard.route -> {
+        // Dashboard
+        composable(Screen.Dashboard.route) {
             DashboardScreen(
                 metrics = dashboardMetrics,
                 onNewSaleClicked = {
                     navController.navigate(Screen.Catalog.route)
                 },
                 onReportsClicked = {
-                    // Navigate to reports - Not implemented yet
+                    // Navigate to reports (not implemented yet)
                 },
                 onOrdersClicked = {
                     navController.navigate(Screen.SalesHistory.route)
@@ -158,20 +146,28 @@ fun CashierNavGraph(navController: NavController) {
                     navController.navigate(Screen.Catalog.route)
                 },
                 onCustomersClicked = {
-                    // Navigate to customers - Not implemented yet
+                    // Navigate to customers (not implemented yet)
                 },
                 onSettingsClicked = {
-                    // In a real app, navigate to settings
-                    // For demo, go back to login
-                    navController.navigate(AuthScreen.Login.route) {
-                        popUpTo(Screen.Dashboard.route) { inclusive = true }
-                    }
+                    // For debugging, open debug menu instead of settings
+                    showDebugMenu = true
                 },
                 userName = "Demo"
             )
+
+            // Debug Menu (activated by settings button)
+            if (showDebugMenu) {
+                DebugMenu(
+                    navController = navController,
+                    currentMode = uiMode,
+                    onChangeMode = onChangeMode,
+                    onDismiss = { showDebugMenu = false }
+                )
+            }
         }
 
-        Screen.Catalog.route -> {
+        // Catalog
+        composable(Screen.Catalog.route) {
             var showAddItemSheet by remember { mutableStateOf(false) }
 
             val catalogState = CatalogState(
@@ -246,7 +242,8 @@ fun CashierNavGraph(navController: NavController) {
             )
         }
 
-        Screen.Cart.route -> {
+        // Cart
+        composable(Screen.Cart.route) {
             val sampleCartItems = listOf(
                 CartItem(
                     id = "1",
@@ -315,7 +312,8 @@ fun CashierNavGraph(navController: NavController) {
             )
         }
 
-        Screen.Payment.route -> {
+        // Payment
+        composable(Screen.Payment.route) {
             var selectedPaymentMethod by remember { mutableStateOf<PaymentMethod?>(null) }
             var cashReceived by remember { mutableStateOf<Double?>(null) }
             var splitPaymentData by remember { mutableStateOf(SplitPaymentData()) }
@@ -362,7 +360,8 @@ fun CashierNavGraph(navController: NavController) {
             )
         }
 
-        Screen.PaymentSuccess.route -> {
+        // Payment Success
+        composable(Screen.PaymentSuccess.route) {
             var isPrinting by remember { mutableStateOf(false) }
 
             val successState = PaymentSuccessState(
@@ -405,7 +404,8 @@ fun CashierNavGraph(navController: NavController) {
             )
         }
 
-        Screen.SalesHistory.route -> {
+        // Sales History
+        composable(Screen.SalesHistory.route) {
             val currentDate = Date()
 
             val salesHistory = listOf(
@@ -459,9 +459,53 @@ fun CashierNavGraph(navController: NavController) {
             )
         }
 
-        // New screens
+        // Error Screen
+        composable(
+            route = Screen.Error.route,
+            arguments = listOf(navArgument("errorType") { type = NavType.StringType })
+        ) {
+            val errorTypeStr = it.arguments?.getString("errorType") ?: ErrorType.UNKNOWN.name
+            val errorType = try {
+                ErrorType.valueOf(errorTypeStr)
+            } catch (e: Exception) {
+                ErrorType.UNKNOWN
+            }
 
-        Screen.OpenShift.route -> {
+            ErrorScreen(
+                errorType = errorType,
+                onRetryClick = {
+                    navController.popBackStack()
+                },
+                onContactSupportClick = {
+                    // Handle contact support
+                }
+            )
+        }
+
+        // Item Detail
+        composable(
+            route = Screen.ItemDetail.route,
+            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+        ) {
+            val productId = it.arguments?.getString("productId") ?: ""
+            val product = sampleProducts.find { it.id == productId } ?:
+            Product(id = productId, name = "Unknown Product", price = 0.0, categoryId = "")
+
+            ItemDetailScreen(
+                product = product,
+                onClose = {
+                    navController.popBackStack()
+                },
+                onAddToCart = { product, modifications ->
+                    // Handle adding to cart
+                    navController.popBackStack()
+                },
+                userCanOverridePrice = true // Based on user role
+            )
+        }
+
+        // Open Shift
+        composable(Screen.OpenShift.route) {
             OpenShiftScreen(
                 onBackClick = {
                     navController.popBackStack()
@@ -475,7 +519,8 @@ fun CashierNavGraph(navController: NavController) {
             )
         }
 
-        Screen.CashMovement.route -> {
+        // Cash Movement
+        composable(Screen.CashMovement.route) {
             CashMovementScreen(
                 onBackClick = {
                     navController.popBackStack()
@@ -487,7 +532,8 @@ fun CashierNavGraph(navController: NavController) {
             )
         }
 
-        Screen.CloseShift.route -> {
+        // Close Shift
+        composable(Screen.CloseShift.route) {
             val shiftSummary = ShiftSummary(
                 openingBalance = 500.0,
                 cashSales = 1234.56,
@@ -509,7 +555,8 @@ fun CashierNavGraph(navController: NavController) {
             )
         }
 
-        Screen.ShiftSummary.route -> {
+        // Shift Summary
+        composable(Screen.ShiftSummary.route) {
             // Create a sample shift summary for demonstration
             val currentTime = System.currentTimeMillis()
             val startTime = Date(currentTime - 28800000) // 8 hours ago
@@ -547,151 +594,5 @@ fun CashierNavGraph(navController: NavController) {
                 }
             )
         }
-
-        else -> {
-            // Default to dashboard if route doesn't match
-            navController.navigate(Screen.Dashboard.route)
-            null
-        }
     }
 }
-
-/**
- * Extension function to add cashier screens to a NavGraphBuilder
- */
-fun NavGraphBuilder.cashierScreens(navController: NavController) {
-    composable(Screen.Splash.route) {
-        CashierNavGraph(navController)
-    }
-
-    composable(Screen.Dashboard.route) {
-        CashierNavGraph(navController)
-    }
-
-    composable(Screen.Catalog.route) {
-        CashierNavGraph(navController)
-    }
-
-    composable(Screen.Cart.route) {
-        CashierNavGraph(navController)
-    }
-
-    composable(Screen.Payment.route) {
-        CashierNavGraph(navController)
-    }
-
-    composable(Screen.PaymentSuccess.route) {
-        CashierNavGraph(navController)
-    }
-
-    composable(Screen.SalesHistory.route) {
-        CashierNavGraph(navController)
-    }
-
-    // New screens
-    composable(
-        route = Screen.Error.route,
-        arguments = listOf(navArgument("errorType") { type = NavType.StringType })
-    ) {
-        val errorTypeStr = it.arguments?.getString("errorType") ?: ErrorType.UNKNOWN.name
-        val errorType = try {
-            ErrorType.valueOf(errorTypeStr)
-        } catch (e: Exception) {
-            ErrorType.UNKNOWN
-        }
-
-        ErrorScreen(
-            errorType = errorType,
-            onRetryClick = {
-                navController.popBackStack()
-            },
-            onContactSupportClick = {
-                // Handle contact support
-            }
-        )
-    }
-
-    composable(Screen.OpenShift.route) {
-        CashierNavGraph(navController)
-    }
-
-    composable(Screen.CashMovement.route) {
-        CashierNavGraph(navController)
-    }
-
-    composable(Screen.CloseShift.route) {
-        CashierNavGraph(navController)
-    }
-
-    composable(Screen.ShiftSummary.route) {
-        CashierNavGraph(navController)
-    }
-
-    composable(
-        route = Screen.ItemDetail.route,
-        arguments = listOf(navArgument("productId") { type = NavType.StringType })
-    ) {
-        val productId = it.arguments?.getString("productId") ?: ""
-        val product = sampleProducts.find { it.id == productId } ?:
-        Product(id = productId, name = "Unknown Product", price = 0.0, categoryId = "")
-
-        ItemDetailScreen(
-            product = product,
-            onClose = {
-                navController.popBackStack()
-            },
-            onAddToCart = { product, modifications ->
-                // Handle adding to cart
-                navController.popBackStack()
-            },
-            userCanOverridePrice = true // Based on user role
-        )
-    }
-}
-
-/**
- * Standalone Cashier navigation host
- */
-@Composable
-fun StandaloneCashierNavHost() {
-    val navController = rememberNavController()
-    NavHost(
-        navController = navController,
-        startDestination = Screen.Splash.route
-    ) {
-        cashierScreens(navController)
-    }
-}
-
-// Sample products for ItemDetail screen
-private val sampleProducts = listOf(
-    Product(
-        id = "1",
-        name = "Coffee",
-        price = 15.00,
-        categoryId = "1",
-        barcode = "5901234123457"
-    ),
-    Product(
-        id = "2",
-        name = "Croissant",
-        price = 10.00,
-        categoryId = "2",
-        barcode = "4003994155486",
-        discountPercentage = 10
-    ),
-    Product(
-        id = "3",
-        name = "Water Bottle",
-        price = 5.00,
-        categoryId = "1",
-        barcode = "7622210146083"
-    ),
-    Product(
-        id = "4",
-        name = "Sandwich",
-        price = 20.00,
-        categoryId = "2",
-        barcode = "1234567890123"
-    )
-)

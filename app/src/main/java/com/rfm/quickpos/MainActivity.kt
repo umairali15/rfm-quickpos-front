@@ -1,26 +1,17 @@
 package com.rfm.quickpos
 
-import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
-import android.content.Context
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
@@ -31,14 +22,16 @@ import com.rfm.quickpos.domain.manager.ConnectivityManager
 import com.rfm.quickpos.domain.manager.UiModeManager
 import com.rfm.quickpos.domain.model.UiMode
 import com.rfm.quickpos.presentation.common.components.ConnectivityBanner
-import com.rfm.quickpos.presentation.common.components.ConnectivityStatus
 import com.rfm.quickpos.presentation.common.components.FeatureFlagProvider
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.presentation.features.splash.SplashScreen
+import com.rfm.quickpos.presentation.navigation.AuthScreen
 import com.rfm.quickpos.presentation.navigation.AppNavigationWithDualMode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -51,6 +44,7 @@ class MainActivity : ComponentActivity() {
 
     // Track initialization state
     private val _isInitialized = MutableStateFlow(false)
+    val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,6 +52,11 @@ class MainActivity : ComponentActivity() {
 
         // Initialize UiModeManager
         uiModeManager = UiModeManager(this)
+
+        // Force CASHIER mode during development
+        lifecycleScope.launch {
+            uiModeManager.setMode(UiMode.CASHIER)
+        }
 
         // Initialize ConnectivityManager
         connectivityManager = ConnectivityManager(this)
@@ -71,8 +70,7 @@ class MainActivity : ComponentActivity() {
 
         // Simulate app initialization process
         lifecycleScope.launch {
-            // Perform any initialization tasks like DB setup, config loading, etc.
-            delay(2000) // Simulate initialization delay
+            delay(1000) // Shorter delay for development
             _isInitialized.value = true
         }
 
@@ -90,8 +88,8 @@ class MainActivity : ComponentActivity() {
                 0
             ).collectAsState()
 
-            // Track initialization
-            val isInitialized by _isInitialized.collectAsState()
+            // Track initialization state
+            val initialized by isInitialized.collectAsState()
 
             // Apply system UI changes based on mode
             ApplySystemUIChanges(uiMode)
@@ -104,7 +102,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        if (!isInitialized) {
+                        if (!initialized) {
                             // Show splash screen during initialization
                             SplashScreen(
                                 onInitializationComplete = {
@@ -125,10 +123,15 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
 
-                                // Use the combined navigation with UI mode awareness
+                                // Use the navigation with AppNavigationWithDualMode
                                 val navController = rememberNavController()
+
+                                // Use AppNavigationWithDualMode with PIN login as start
+                                // Modify the Dashboard screen onSettingsClicked in AppNavigationWithDualMode.kt
+                                // to show the debug menu instead of going back to login
                                 AppNavigationWithDualMode(
                                     navController = navController,
+                                    startDestination = AuthScreen.PinLogin.route,
                                     startingMode = uiMode
                                 )
                             }
@@ -144,18 +147,10 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun ApplySystemUIChanges(uiMode: UiMode) {
+        // Same implementation as before
         if (uiMode == UiMode.KIOSK) {
-            // For kiosk mode, apply physical lockdown
-            // Keep screen on
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-            // Implement immersive mode for kiosk
             WindowCompat.setDecorFitsSystemWindows(window, false)
-
-            // In a real app with proper device owner setup, we would use:
-            // startLockTask()
-
-            // For testing only: hide system bars without lock task mode
             WindowCompat.getInsetsController(window, window.decorView).apply {
                 isAppearanceLightStatusBars = false
                 isAppearanceLightNavigationBars = false
@@ -163,19 +158,13 @@ class MainActivity : ComponentActivity() {
                 systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             }
         } else {
-            // For cashier mode, use normal window behavior
             window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
             WindowCompat.setDecorFitsSystemWindows(window, true)
-
-            // Stop lock task mode if active
             try {
                 stopLockTask()
             } catch (e: Exception) {
                 // Not in lock task mode, ignore
             }
-
-            // Show system bars
             WindowCompat.getInsetsController(window, window.decorView).apply {
                 show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
                 systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_DEFAULT

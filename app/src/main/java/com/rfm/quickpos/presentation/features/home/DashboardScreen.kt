@@ -16,9 +16,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
@@ -35,6 +35,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,11 +49,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.rfm.quickpos.presentation.common.components.RfmCard
 import com.rfm.quickpos.presentation.common.components.RfmElevatedCard
-import com.rfm.quickpos.presentation.common.components.StatusCard
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
+import com.rfm.quickpos.presentation.debug.DebugMenu
 
 /**
  * Simplified Dashboard Screen that serves as the home page of the app
+ * Updated to include debug menu during development
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +69,9 @@ fun DashboardScreen(
     userName: String,
     modifier: Modifier = Modifier
 ) {
+    // State to show/hide the debug menu (optional, only for development phase)
+    var showDebugMenu by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -76,6 +84,16 @@ fun DashboardScreen(
                     )
                 },
                 actions = {
+                    // Debug mode button (only visible during development)
+                    IconButton(onClick = { showDebugMenu = true }) {
+                        Icon(
+                            imageVector = Icons.Default.BugReport,
+                            contentDescription = "Debug Menu",
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                        )
+                    }
+
+                    // Normal settings button
                     IconButton(onClick = onSettingsClicked) {
                         Icon(
                             imageVector = Icons.Outlined.Settings,

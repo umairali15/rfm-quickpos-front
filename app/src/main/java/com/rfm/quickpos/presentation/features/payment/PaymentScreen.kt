@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -428,7 +429,7 @@ fun PaymentScreen(
                 onClick = onProcessPayment,
                 enabled = canProcessPayment && !state.isProcessing,
                 fullWidth = true,
-                leadingIcon = Icons.Default.QrCode
+                leadingIcon = Icons.Default.ShoppingCart
             )
 
             if (state.isProcessing) {

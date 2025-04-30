@@ -23,7 +23,16 @@ fun DualModeNavigation(
     navController: NavHostController = rememberNavController()
 ) {
     when (uiMode) {
-        UiMode.CASHIER -> CashierNavGraph(navController)
+        UiMode.CASHIER -> {
+            // Use the NavHost and cashierScreens directly since CashierNavGraph is not available
+            NavHost(
+                navController = navController,
+                startDestination = Screen.Dashboard.route
+            ) {
+                // Add cashier mode screens
+                cashierScreens(navController)
+            }
+        }
         UiMode.KIOSK -> KioskNavGraph(navController)
     }
 }
@@ -100,15 +109,4 @@ fun KioskNavGraph(navController: NavHostController) {
             )
         }
     }
-}
-
-/**
- * Screen routes for Kiosk mode
- */
-sealed class KioskScreen(val route: String) {
-    object Attract : KioskScreen("kiosk_attract")
-    object Catalog : KioskScreen("kiosk_catalog")
-    object Cart : KioskScreen("kiosk_cart")
-    object Payment : KioskScreen("kiosk_payment")
-    object PaymentSuccess : KioskScreen("kiosk_payment_success")
 }

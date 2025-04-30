@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.LocalOffer
 import androidx.compose.material.icons.filled.Notes
 import androidx.compose.material.icons.filled.QrCode
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -520,7 +521,7 @@ fun ItemDetailScreen(
                         )
                     },
                     modifier = Modifier.weight(1f),
-                    leadingIcon = Icons.Default.QrCode
+                    leadingIcon = Icons.Default.ShoppingCart
                 )
             }
         }
