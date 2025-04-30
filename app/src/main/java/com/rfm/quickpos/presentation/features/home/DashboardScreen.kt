@@ -16,12 +16,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.DoNotDisturbOn
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -52,9 +56,12 @@ import com.rfm.quickpos.presentation.common.components.RfmElevatedCard
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.presentation.debug.DebugMenu
 
+import com.rfm.quickpos.presentation.common.models.ActionCardData
+
+
 /**
  * Simplified Dashboard Screen that serves as the home page of the app
- * Updated to include debug menu during development
+ * Updated to include debug menu during development and shift management actions
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,10 +74,27 @@ fun DashboardScreen(
     onCustomersClicked: () -> Unit,
     onSettingsClicked: () -> Unit,
     userName: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // Add this parameter to accept shift-related actions:
+    additionalActions: List<ActionCardData> = emptyList(),
+    // Optional navController to pass to debug menu
+    navController: androidx.navigation.NavController? = null,
+    // Optional uiMode and onChangeMode to pass to debug menu
+    currentUiMode: com.rfm.quickpos.domain.model.UiMode? = null,
+    onChangeMode: ((com.rfm.quickpos.domain.model.UiMode) -> Unit)? = null
 ) {
     // State to show/hide the debug menu (optional, only for development phase)
     var showDebugMenu by remember { mutableStateOf(false) }
+
+    // Show debug menu if state is true and we have necessary parameters
+    if (showDebugMenu && navController != null && currentUiMode != null && onChangeMode != null) {
+        DebugMenu(
+            navController = navController,
+            currentMode = currentUiMode,
+            onChangeMode = onChangeMode,
+            onDismiss = { showDebugMenu = false }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -264,6 +288,46 @@ fun DashboardScreen(
                 )
             }
 
+            // Display additional actions if provided (shift management)
+            if (additionalActions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Shift Management section header
+                Text(
+                    text = "Shift Management",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                // Create rows of shift actions (2 columns per row)
+                val rows = additionalActions.chunked(2)
+                rows.forEach { rowActions ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        rowActions.forEach { action ->
+                            ActionCard(
+                                title = action.title,
+                                icon = action.icon,
+                                onClick = action.onClick,
+                                backgroundColor = action.backgroundColor,
+                                contentColor = action.contentColor,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        // Add spacer if only one item in the row to maintain alignment
+                        if (rowActions.size == 1) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
         }
     }
@@ -370,6 +434,38 @@ fun DashboardScreenPreview() {
         )
     )
 
+    // Sample shift actions for preview
+    val additionalActions = listOf(
+        ActionCardData(
+            title = "Open Shift",
+            icon = Icons.Default.PlayArrow,
+            onClick = { },
+            backgroundColor = Color(0xFF2196F3),
+            contentColor = Color.White
+        ),
+        ActionCardData(
+            title = "Cash In",
+            icon = Icons.Default.ArrowDownward,
+            onClick = { },
+            backgroundColor = Color(0xFF00C853),
+            contentColor = Color.White
+        ),
+        ActionCardData(
+            title = "Cash Out",
+            icon = Icons.Default.ArrowUpward,
+            onClick = { },
+            backgroundColor = Color(0xFFFF5252),
+            contentColor = Color.White
+        ),
+        ActionCardData(
+            title = "Close Shift",
+            icon = Icons.Default.DoNotDisturbOn,
+            onClick = { },
+            backgroundColor = Color(0xFFFFAB00),
+            contentColor = Color.Black
+        )
+    )
+
     RFMQuickPOSTheme {
         Surface {
             DashboardScreen(
@@ -380,7 +476,8 @@ fun DashboardScreenPreview() {
                 onCatalogClicked = {},
                 onCustomersClicked = {},
                 onSettingsClicked = {},
-                userName = "Ahmed"
+                userName = "Ahmed",
+                additionalActions = additionalActions
             )
         }
     }

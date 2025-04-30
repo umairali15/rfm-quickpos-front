@@ -26,7 +26,7 @@ import com.rfm.quickpos.presentation.common.components.FeatureFlagProvider
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.presentation.features.splash.SplashScreen
 import com.rfm.quickpos.presentation.navigation.AuthScreen
-import com.rfm.quickpos.presentation.navigation.AppNavigationWithDualMode
+import com.rfm.quickpos.presentation.navigation.UnifiedNavigation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -123,16 +123,18 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
 
-                                // Use the navigation with AppNavigationWithDualMode
+
                                 val navController = rememberNavController()
 
-                                // Use AppNavigationWithDualMode with PIN login as start
-                                // Modify the Dashboard screen onSettingsClicked in AppNavigationWithDualMode.kt
-                                // to show the debug menu instead of going back to login
-                                AppNavigationWithDualMode(
-                                    navController = navController,
+                                // With this code:
+                                UnifiedNavigation(
                                     startDestination = AuthScreen.PinLogin.route,
-                                    startingMode = uiMode
+                                    uiMode = uiMode,
+                                    onChangeMode = { newMode ->
+                                        lifecycleScope.launch {
+                                            uiModeManager.setMode(newMode)
+                                        }
+                                    }
                                 )
                             }
                         }
