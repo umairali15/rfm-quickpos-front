@@ -1,3 +1,5 @@
+// app/src/main/java/com/rfm/quickpos/presentation/navigation/Screen.kt
+
 package com.rfm.quickpos.presentation.navigation
 
 import com.rfm.quickpos.presentation.features.error.ErrorType
@@ -13,24 +15,26 @@ sealed class Screen(val route: String) {
     object PaymentSuccess : Screen("payment_success")
     object SalesHistory : Screen("sales_history")
 
-    // Auth screens
-    object Login : Screen("login")
-    object PinLogin : Screen("pin_login")
+    // Setup screens
+    object DevicePairing : Screen("device_pairing")
 
-    // New screens
+    // Utility screens
     object Splash : Screen("splash")
     object Error : Screen("error/{errorType}") {
         fun createRoute(errorType: ErrorType) = "error/${errorType.name}"
     }
+
+    // Shift management
     object OpenShift : Screen("open_shift")
     object CashMovement : Screen("cash_movement")
     object CloseShift : Screen("close_shift")
     object ShiftSummary : Screen("shift_summary")
+
+    // Catalog detail
     object ItemDetail : Screen("item_detail/{productId}") {
         fun createRoute(productId: String) = "item_detail/$productId"
     }
 }
-
 
 /**
  * Screen routes for Kiosk mode
@@ -42,3 +46,5 @@ sealed class KioskScreen(val route: String) {
     object Payment : KioskScreen("kiosk_payment")
     object PaymentSuccess : KioskScreen("kiosk_payment_success")
 }
+
+// REMOVED: AuthScreen duplicate declaration

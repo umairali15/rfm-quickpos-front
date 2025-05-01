@@ -1,7 +1,6 @@
-// app/src/main/java/com/rfm/quickpos/presentation/navigation/UnifiedNavigation.kt
-
 package com.rfm.quickpos.presentation.navigation
 
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.DoNotDisturb
@@ -10,12 +9,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.*
 import androidx.navigation.compose.*
+import com.rfm.quickpos.domain.model.DevicePairingInfo
+import com.rfm.quickpos.domain.model.PairingStatus
 import com.rfm.quickpos.domain.model.UiMode
 import com.rfm.quickpos.presentation.debug.DebugMenu
 import com.rfm.quickpos.presentation.features.auth.DualModePinLoginScreen
 import com.rfm.quickpos.presentation.features.auth.LoginScreen
 import com.rfm.quickpos.presentation.features.catalog.*
 import com.rfm.quickpos.presentation.features.cart.*
+import com.rfm.quickpos.presentation.features.setup.DevicePairingScreen
+import com.rfm.quickpos.presentation.features.setup.DevicePairingState
 import com.rfm.quickpos.presentation.features.shift.*
 import com.rfm.quickpos.presentation.features.splash.SplashScreen
 import com.rfm.quickpos.presentation.features.error.*
@@ -24,8 +27,8 @@ import com.rfm.quickpos.presentation.features.history.*
 import com.rfm.quickpos.presentation.features.kiosk.*
 import com.rfm.quickpos.presentation.features.payment.*
 import com.rfm.quickpos.presentation.features.sale.*
-import java.util.Date
 import com.rfm.quickpos.presentation.common.models.ActionCardData
+import java.util.Date
 
 /**
  * Unified navigation system that handles both Cashier and Kiosk modes
@@ -109,6 +112,70 @@ fun UnifiedNavigation(
                     navController.navigate(AuthScreen.Login.route) {
                         popUpTo(AuthScreen.PinLogin.route) { inclusive = true }
                     }
+                },
+                onDevicePairing = {
+                    navController.navigate(Screen.DevicePairing.route)
+                }
+            )
+        }
+
+        // ===== DEVICE PAIRING =====
+        composable(Screen.DevicePairing.route) {
+            var pairingState by remember {
+                mutableStateOf(
+                    DevicePairingState(
+                        pairingInfo = DevicePairingInfo(),
+                        status = PairingStatus.INITIAL,
+                        isLoading = false
+                    )
+                )
+            }
+
+            DevicePairingScreen(
+                state = pairingState,
+                onPairingInfoChange = { newInfo ->
+                    pairingState = pairingState.copy(pairingInfo = newInfo)
+                },
+                onPairingSubmit = {
+                    // Set loading state
+                    pairingState = pairingState.copy(
+                        isLoading = true,
+                        status = PairingStatus.PAIRING
+                    )
+
+                    // Simulate network request
+                    android.os.Handler().postDelayed({
+                        // Check if required fields are filled (this would be a real API call)
+                        if (pairingState.pairingInfo.merchantId.isNotBlank() &&
+                            pairingState.pairingInfo.terminalId.isNotBlank()) {
+
+                            // Success - navigate to login
+                            pairingState = pairingState.copy(
+                                isLoading = false,
+                                status = PairingStatus.SUCCESS,
+                                isPaired = true
+                            )
+
+                            // Here you would actually store the pairing info to persistent storage
+
+                            navController.navigate(AuthScreen.PinLogin.route) {
+                                popUpTo(Screen.DevicePairing.route) { inclusive = true }
+                            }
+                        } else {
+                            // Error - show error message
+                            pairingState = pairingState.copy(
+                                isLoading = false,
+                                status = PairingStatus.ERROR,
+                                errorMessage = "Please fill in all required fields"
+                            )
+                        }
+                    }, 1500)
+                },
+                onSkipSetup = {
+                    // For development only
+                    navController.navigate(AuthScreen.PinLogin.route) {
+                        popUpTo(Screen.DevicePairing.route) { inclusive = true }
+                    }
                 }
             )
         }
@@ -129,9 +196,10 @@ fun UnifiedNavigation(
         }
 
         // ===== CASHIER MODE SCREENS =====
-        if (uiMode == UiMode.CASHIER) {
-            // Dashboard
-            composable(Screen.Dashboard.route) {
+        // Dashboard
+        composable(Screen.Dashboard.route) {
+            // Only show Dashboard if in CASHIER mode
+            if (uiMode == UiMode.CASHIER) {
                 val shiftActions = getShiftActions(isShiftOpen, navController)
 
                 DashboardScreen(
@@ -154,10 +222,17 @@ fun UnifiedNavigation(
                     // Add shift-related action cards to the dashboard
                     additionalActions = shiftActions
                 )
+            } else {
+                // If somehow we get here in kiosk mode, redirect to attract screen
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            // Catalog
-            composable(Screen.Catalog.route) {
+        // Catalog
+        composable(Screen.Catalog.route) {
+            if (uiMode == UiMode.CASHIER) {
                 var showAddItemSheet by remember { mutableStateOf(false) }
 
                 CatalogScreen(
@@ -187,10 +262,16 @@ fun UnifiedNavigation(
                         currentSaleNumber = "5917-1610-174122"
                     )
                 }
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            // Cart
-            composable(Screen.Cart.route) {
+        // Cart
+        composable(Screen.Cart.route) {
+            if (uiMode == UiMode.CASHIER) {
                 CartScreen(
                     state = sampleData.cartState,
                     onBackClick = { navController.popBackStack() },
@@ -203,10 +284,16 @@ fun UnifiedNavigation(
                     onAddCustomerClick = { /* Add customer */ },
                     onClearCart = { /* Clear cart */ }
                 )
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            // Payment
-            composable(Screen.Payment.route) {
+        // Payment
+        composable(Screen.Payment.route) {
+            if (uiMode == UiMode.CASHIER) {
                 var paymentState by remember { mutableStateOf(sampleData.paymentState) }
 
                 PaymentScreen(
@@ -233,10 +320,16 @@ fun UnifiedNavigation(
                         paymentState = paymentState.copy(cashReceived = amount)
                     }
                 )
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            // Payment Success
-            composable(Screen.PaymentSuccess.route) {
+        // Payment Success
+        composable(Screen.PaymentSuccess.route) {
+            if (uiMode == UiMode.CASHIER) {
                 var successState by remember { mutableStateOf(sampleData.paymentSuccessState) }
 
                 PaymentSuccessScreen(
@@ -259,10 +352,16 @@ fun UnifiedNavigation(
                         }
                     }
                 )
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            // Sales History
-            composable(Screen.SalesHistory.route) {
+        // Sales History
+        composable(Screen.SalesHistory.route) {
+            if (uiMode == UiMode.CASHIER) {
                 SalesHistoryScreen(
                     state = sampleData.salesHistoryState,
                     onBackClick = { navController.popBackStack() },
@@ -276,32 +375,38 @@ fun UnifiedNavigation(
                     onStatusFilterClick = { /* Filter by status */ },
                     onDateRangeClick = { /* Filter by date range */ }
                 )
-            }
-
-            // Error Screen
-            composable(
-                route = Screen.Error.route,
-                arguments = listOf(navArgument("errorType") { type = NavType.StringType })
-            ) {
-                val errorTypeStr = it.arguments?.getString("errorType") ?: ErrorType.UNKNOWN.name
-                val errorType = try {
-                    ErrorType.valueOf(errorTypeStr)
-                } catch (e: Exception) {
-                    ErrorType.UNKNOWN
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
                 }
+            }
+        }
 
-                ErrorScreen(
-                    errorType = errorType,
-                    onRetryClick = { navController.popBackStack() },
-                    onContactSupportClick = { /* Handle contact support */ }
-                )
+        // Error Screen
+        composable(
+            route = Screen.Error.route,
+            arguments = listOf(navArgument("errorType") { type = NavType.StringType })
+        ) {
+            val errorTypeStr = it.arguments?.getString("errorType") ?: ErrorType.UNKNOWN.name
+            val errorType = try {
+                ErrorType.valueOf(errorTypeStr)
+            } catch (e: Exception) {
+                ErrorType.UNKNOWN
             }
 
-            // Item Detail
-            composable(
-                route = Screen.ItemDetail.route,
-                arguments = listOf(navArgument("productId") { type = NavType.StringType })
-            ) {
+            ErrorScreen(
+                errorType = errorType,
+                onRetryClick = { navController.popBackStack() },
+                onContactSupportClick = { /* Handle contact support */ }
+            )
+        }
+
+        // Item Detail
+        composable(
+            route = Screen.ItemDetail.route,
+            arguments = listOf(navArgument("productId") { type = NavType.StringType })
+        ) {
+            if (uiMode == UiMode.CASHIER) {
                 val productId = it.arguments?.getString("productId") ?: ""
                 val product = sampleData.products.find { it.id == productId }
                     ?: Product(id = productId, name = "Unknown Product", price = 0.0, categoryId = "")
@@ -314,12 +419,18 @@ fun UnifiedNavigation(
                     },
                     userCanOverridePrice = true // Based on user role
                 )
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            // ===== SHIFT MANAGEMENT SCREENS =====
+        // ===== SHIFT MANAGEMENT SCREENS =====
 
-            // Open Shift
-            composable(Screen.OpenShift.route) {
+        // Open Shift
+        composable(Screen.OpenShift.route) {
+            if (uiMode == UiMode.CASHIER) {
                 OpenShiftScreen(
                     onBackClick = {
                         // If coming from login, need to go back to login instead of exit
@@ -339,10 +450,16 @@ fun UnifiedNavigation(
                         }
                     }
                 )
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            // Cash Movement
-            composable(Screen.CashMovement.route) {
+        // Cash Movement
+        composable(Screen.CashMovement.route) {
+            if (uiMode == UiMode.CASHIER) {
                 CashMovementScreen(
                     onBackClick = { navController.popBackStack() },
                     onCashMovementSubmit = { type, amount, reason, note ->
@@ -352,10 +469,16 @@ fun UnifiedNavigation(
                         }
                     }
                 )
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            // Close Shift
-            composable(Screen.CloseShift.route) {
+        // Close Shift
+        composable(Screen.CloseShift.route) {
+            if (uiMode == UiMode.CASHIER) {
                 CloseShiftScreen(
                     shiftSummary = sampleData.shiftSummary,
                     onBackClick = { navController.popBackStack() },
@@ -364,10 +487,16 @@ fun UnifiedNavigation(
                         navController.navigate(Screen.ShiftSummary.route)
                     }
                 )
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            // Shift Summary
-            composable(Screen.ShiftSummary.route) {
+        // Shift Summary
+        composable(Screen.ShiftSummary.route) {
+            if (uiMode == UiMode.CASHIER) {
                 ShiftSummaryScreen(
                     shift = sampleData.shiftDetail,
                     onBackClick = {
@@ -383,20 +512,32 @@ fun UnifiedNavigation(
                     onExportCsv = { /* Handle export to CSV */ },
                     onEmailReport = { /* Handle email report */ }
                 )
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
         }
 
         // ===== KIOSK MODE SCREENS =====
-        if (uiMode == UiMode.KIOSK) {
-            composable(KioskScreen.Attract.route) {
+        // Attract Screen (Kiosk home)
+        composable(KioskScreen.Attract.route) {
+            if (uiMode == UiMode.KIOSK) {
                 AttractScreen(
                     onStartOrderClick = {
                         navController.navigate(KioskScreen.Catalog.route)
                     }
                 )
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            composable(KioskScreen.Catalog.route) {
+        // Kiosk Catalog
+        composable(KioskScreen.Catalog.route) {
+            if (uiMode == UiMode.KIOSK) {
                 KioskInactivityDetector(
                     onTimeout = {
                         navController.navigate(KioskScreen.Attract.route) {
@@ -411,9 +552,16 @@ fun UnifiedNavigation(
                         modifier = inactivityModifier
                     )
                 }
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            composable(KioskScreen.Cart.route) {
+        // Kiosk Cart
+        composable(KioskScreen.Cart.route) {
+            if (uiMode == UiMode.KIOSK) {
                 KioskInactivityDetector(
                     onTimeout = {
                         navController.navigate(KioskScreen.Attract.route) {
@@ -427,9 +575,16 @@ fun UnifiedNavigation(
                         modifier = inactivityModifier
                     )
                 }
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            composable(KioskScreen.Payment.route) {
+        // Kiosk Payment
+        composable(KioskScreen.Payment.route) {
+            if (uiMode == UiMode.KIOSK) {
                 KioskInactivityDetector(
                     onTimeout = {
                         navController.navigate(KioskScreen.Attract.route) {
@@ -448,9 +603,16 @@ fun UnifiedNavigation(
                         modifier = inactivityModifier
                     )
                 }
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
+        }
 
-            composable(KioskScreen.PaymentSuccess.route) {
+        // Kiosk Payment Success
+        composable(KioskScreen.PaymentSuccess.route) {
+            if (uiMode == UiMode.KIOSK) {
                 KioskPaymentSuccessScreen(
                     onFinishClick = {
                         navController.navigate(KioskScreen.Attract.route) {
@@ -458,6 +620,10 @@ fun UnifiedNavigation(
                         }
                     }
                 )
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
             }
         }
     }
@@ -481,7 +647,6 @@ private fun navigateToHomeScreen(navController: NavController, mode: UiMode) {
     }
 }
 
-
 @Composable
 private fun getShiftActions(isShiftOpen: Boolean, navController: NavController): List<ActionCardData> {
     val actions = mutableListOf<ActionCardData>()
@@ -491,7 +656,7 @@ private fun getShiftActions(isShiftOpen: Boolean, navController: NavController):
         actions.add(
             ActionCardData(
                 title = "Cash In",
-                icon = androidx.compose.material.icons.Icons.Default.ArrowUpward,
+                icon = Icons.Default.ArrowUpward,
                 onClick = {
                     navController.navigate(Screen.CashMovement.route)
                 },
@@ -503,7 +668,7 @@ private fun getShiftActions(isShiftOpen: Boolean, navController: NavController):
         actions.add(
             ActionCardData(
                 title = "Cash Out",
-                icon = androidx.compose.material.icons.Icons.Default.ArrowDownward,
+                icon = Icons.Default.ArrowDownward,
                 onClick = {
                     navController.navigate(Screen.CashMovement.route)
                 },
@@ -515,7 +680,7 @@ private fun getShiftActions(isShiftOpen: Boolean, navController: NavController):
         actions.add(
             ActionCardData(
                 title = "Close Shift",
-                icon = androidx.compose.material.icons.Icons.Default.DoNotDisturb,
+                icon = Icons.Default.DoNotDisturb,
                 onClick = {
                     navController.navigate(Screen.CloseShift.route)
                 },
@@ -528,7 +693,7 @@ private fun getShiftActions(isShiftOpen: Boolean, navController: NavController):
         actions.add(
             ActionCardData(
                 title = "Open Shift",
-                icon = androidx.compose.material.icons.Icons.Default.PlayArrow,
+                icon = Icons.Default.PlayArrow,
                 onClick = {
                     navController.navigate(Screen.OpenShift.route)
                 },
@@ -542,21 +707,10 @@ private fun getShiftActions(isShiftOpen: Boolean, navController: NavController):
 }
 
 /**
- * Data class for action card specifications
- */
-data class ActionCardData(
-    val title: String,
-    val icon: androidx.compose.ui.graphics.vector.ImageVector,
-    val onClick: () -> Unit,
-    val backgroundColor: androidx.compose.ui.graphics.Color,
-    val contentColor: androidx.compose.ui.graphics.Color
-)
-
-/**
  * Generate sample data for screens
  */
 private fun getSampleData(): SampleData {
-    // Same implementation as before
+    // Sample data generation
     val categories = listOf(
         ProductCategory("1", "Beverages"),
         ProductCategory("2", "Food"),

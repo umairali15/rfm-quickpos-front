@@ -1,143 +1,67 @@
+// app/src/main/java/com/rfm/quickpos/presentation/features/auth/DualModePinLoginScreen.kt
+
 package com.rfm.quickpos.presentation.features.auth
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.PointOfSale
-import androidx.compose.material.icons.filled.Storefront
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rfm.quickpos.R
 import com.rfm.quickpos.domain.model.UiMode
-import com.rfm.quickpos.presentation.common.theme.ButtonShape
-import com.rfm.quickpos.presentation.common.theme.RfmRed
+import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 
 /**
- * Enhanced dual mode PIN login screen with modern Material 3 design
- * Supports both cashier and kiosk modes with improved visual design
+ * PIN-based login screen that also determines the UI mode (Cashier or Kiosk)
+ * Now includes a device pairing option.
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun DualModePinLoginScreen(
     onPinSubmit: (pin: String, mode: UiMode) -> Unit,
     onBackToEmailLogin: () -> Unit,
-    modifier: Modifier = Modifier,
-    userName: String = "User",
-    errorMessage: String? = null
+    onDevicePairing: () -> Unit,
+    errorMessage: String? = null,
+    modifier: Modifier = Modifier
 ) {
     var pin by remember { mutableStateOf("") }
-    val focusManager = LocalFocusManager.current
-    val focusRequester = remember { FocusRequester() }
+    var mode by remember { mutableStateOf(UiMode.CASHIER) }
+    var isEditingMode by remember { mutableStateOf(false) }
+    var showError by remember { mutableStateOf(false) }
 
-    // Mode selection state
-    var selectedMode by remember { mutableStateOf(UiMode.CASHIER) }
-
-    // Show mode selection help
-    var showModeHelp by remember { mutableStateOf(false) }
-
-    // Predefined PINs (in a real app, these would be validated against the backend)
-    val cashierPin = "1234"
-    val kioskPin = "5678"
+    // Update error state when errorMessage changes
+    LaunchedEffect(errorMessage) {
+        showError = errorMessage != null
+    }
 
     // Background gradient
     val backgroundGradient = Brush.verticalGradient(
         colors = listOf(
             MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.background.copy(alpha = 0.95f),
-            MaterialTheme.colorScheme.background.copy(alpha = 0.9f)
+            MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+            MaterialTheme.colorScheme.background.copy(alpha = 0.8f)
         )
     )
-
-    // Logo rotation animation based on selected mode
-    val rotation by animateFloatAsState(
-        targetValue = if (selectedMode == UiMode.KIOSK) 10f else 0f,
-        label = "logo-rotation"
-    )
-
-    // Auto-validate PIN when 4 digits are entered
-    LaunchedEffect(pin) {
-        if (pin.length == 4) {
-            focusManager.clearFocus()
-
-            // Determine mode based on PIN
-            val mode = when (pin) {
-                cashierPin -> UiMode.CASHIER
-                kioskPin -> UiMode.KIOSK
-                else -> selectedMode // Keep selected mode if PIN doesn't match known PINs
-            }
-
-            onPinSubmit(pin, mode)
-        }
-    }
-
-    // Auto-focus on PIN field when screen is composed
-    LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
-    }
 
     Box(
         modifier = modifier
@@ -147,77 +71,42 @@ fun DualModePinLoginScreen(
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(top = 48.dp, bottom = 24.dp)
-                .verticalScroll(rememberScrollState())
+                .fillMaxSize()
+                .padding(24.dp)
         ) {
-            // Enhanced logo with rotation effect based on mode
-            Box(
-                contentAlignment = Alignment.Center,
+            // Logo
+            Image(
+                painter = painterResource(id = R.drawable.rfm_quickpos_logo),
+                contentDescription = "RFM QuickPOS Logo",
                 modifier = Modifier
-                    .size(200.dp)
-                    .padding(16.dp)
-                    .graphicsLayer {
-                        rotationZ = rotation
-                    }
-                    .shadow(
-                        elevation = 8.dp,
-                        shape = CircleShape,
-                        spotColor = if (selectedMode == UiMode.CASHIER)
-                            RfmRed.copy(alpha = 0.25f)
-                        else
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-                    )
-                    .clip(CircleShape)
-                    .background(Color.White)
-            ) {
-                Image(
-                    painter = painterResource(id = R.drawable.rfm_quickpos_logo),
-                    contentDescription = "RFM QuickPOS Logo",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.size(140.dp)
-                )
-            }
+                    .size(120.dp)
+                    .padding(bottom = 16.dp)
+            )
+
+            // Title
+            Text(
+                text = "Welcome Back",
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 28.sp
+                ),
+                color = MaterialTheme.colorScheme.onBackground
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Subtitle
+            Text(
+                text = "Enter your PIN to continue",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Welcome text with animation based on mode
-            AnimatedContent(
-                targetState = selectedMode,
-                label = "welcome-text"
-            ) { mode ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = if (mode == UiMode.CASHIER)
-                            "Welcome, ${if (userName != "User") userName else "Cashier"}!"
-                        else
-                            "Kiosk Mode Login",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 26.sp
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Text(
-                        text = if (mode == UiMode.CASHIER)
-                            "Enter your PIN to continue"
-                        else
-                            "Enter admin PIN to access kiosk setup",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Error message with animation
+            // Error message
             AnimatedVisibility(
-                visible = errorMessage != null,
+                visible = showError,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
@@ -230,300 +119,77 @@ fun DualModePinLoginScreen(
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
                 ) {
-                    Text(
-                        text = errorMessage ?: "",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.error,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
-            }
-
-            // PIN input card with enhanced styling
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .shadow(
-                        elevation = 4.dp,
-                        shape = RoundedCornerShape(24.dp),
-                        spotColor = Color.Black.copy(alpha = 0.2f)
-                    ),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                shape = RoundedCornerShape(24.dp)
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp)
-                ) {
-                    // Mode selector with icons and enhanced styling
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 24.dp)
+                        modifier = Modifier.padding(12.dp)
                     ) {
-                        // Cashier mode option
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { selectedMode = UiMode.CASHIER }
-                                .padding(8.dp)
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (selectedMode == UiMode.CASHIER)
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                                    .border(
-                                        width = if (selectedMode == UiMode.CASHIER) 2.dp else 0.dp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        shape = CircleShape
-                                    )
-                                    .padding(16.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PointOfSale,
-                                    contentDescription = null,
-                                    tint = if (selectedMode == UiMode.CASHIER)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Text(
-                                text = "Cashier Mode",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (selectedMode == UiMode.CASHIER)
-                                    FontWeight.Bold
-                                else
-                                    FontWeight.Normal,
-                                color = if (selectedMode == UiMode.CASHIER)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-
-                        // Divider
-                        Box(
-                            modifier = Modifier
-                                .height(64.dp)
-                                .width(1.dp)
-                                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                        Icon(
+                            imageVector = Icons.Default.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
                         )
 
-                        // Kiosk mode option
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable { selectedMode = UiMode.KIOSK }
-                                .padding(8.dp)
-                        ) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier
-                                    .size(64.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (selectedMode == UiMode.KIOSK)
-                                            MaterialTheme.colorScheme.primaryContainer
-                                        else
-                                            MaterialTheme.colorScheme.surfaceVariant
-                                    )
-                                    .border(
-                                        width = if (selectedMode == UiMode.KIOSK) 2.dp else 0.dp,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        shape = CircleShape
-                                    )
-                                    .padding(16.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Storefront,
-                                    contentDescription = null,
-                                    tint = if (selectedMode == UiMode.KIOSK)
-                                        MaterialTheme.colorScheme.primary
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                        Spacer(modifier = Modifier.width(8.dp))
 
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Text(
-                                text = "Kiosk Mode",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = if (selectedMode == UiMode.KIOSK)
-                                    FontWeight.Bold
-                                else
-                                    FontWeight.Normal,
-                                color = if (selectedMode == UiMode.KIOSK)
-                                    MaterialTheme.colorScheme.primary
-                                else
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    Divider(
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                        modifier = Modifier.padding(bottom = 24.dp)
-                    )
-
-                    // PIN input field with enhanced styling
-                    OutlinedTextField(
-                        value = pin,
-                        onValueChange = { newPin ->
-                            // Only accept digits and limit to 4 characters
-                            if (newPin.length <= 4 && newPin.all { it.isDigit() }) {
-                                pin = newPin
-                            }
-                        },
-                        label = { Text("PIN Code") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        },
-                        trailingIcon = {
-                            // Replace Tooltip with a simple IconButton that toggles help visibility
-                            IconButton(onClick = { showModeHelp = !showModeHelp }) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Info,
-                                    contentDescription = "PIN Info",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        },
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.NumberPassword,
-                            imeAction = ImeAction.Done
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onDone = {
-                                if (pin.length == 4) {
-                                    focusManager.clearFocus()
-                                    // Determine mode based on PIN
-                                    val mode = when (pin) {
-                                        cashierPin -> UiMode.CASHIER
-                                        kioskPin -> UiMode.KIOSK
-                                        else -> selectedMode
-                                    }
-                                    onPinSubmit(pin, mode)
-                                }
-                            }
-                        ),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(focusRequester)
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    // Pin digit indicator (dots)
-                    Row(
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        for (i in 0 until 4) {
-                            Box(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .padding(4.dp)
-                                    .clip(CircleShape)
-                                    .background(
-                                        if (i < pin.length) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                                    )
-                            )
-
-                            if (i < 3) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // Submit button with enhanced styling and mode-specific color
-                    Button(
-                        onClick = {
-                            if (pin.length == 4) {
-                                // Determine mode based on PIN
-                                val mode = when (pin) {
-                                    cashierPin -> UiMode.CASHIER
-                                    kioskPin -> UiMode.KIOSK
-                                    else -> selectedMode
-                                }
-                                onPinSubmit(pin, mode)
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ),
-                        enabled = pin.length == 4,
-                        shape = ButtonShape,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp)
-                    ) {
                         Text(
-                            text = "Submit PIN",
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            )
+                            text = errorMessage ?: "Invalid PIN. Please try again.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
             }
 
-            // Mode selection help info
-            AnimatedVisibility(
-                visible = showModeHelp,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Card(
+            // Mode selector (Cashier/Kiosk)
+            if (isEditingMode) {
+                Row(
+                    horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 16.dp),
+                        .padding(bottom = 16.dp)
+                ) {
+                    // Cashier mode
+                    ModeButton(
+                        title = "Cashier",
+                        icon = Icons.Default.Person,
+                        isSelected = mode == UiMode.CASHIER,
+                        onClick = { mode = UiMode.CASHIER }
+                    )
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    // Kiosk mode
+                    ModeButton(
+                        title = "Kiosk",
+                        icon = Icons.Default.Storefront,
+                        isSelected = mode == UiMode.KIOSK,
+                        onClick = { mode = UiMode.KIOSK }
+                    )
+                }
+            } else {
+                // Show current mode
+                Card(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.secondaryContainer
                     ),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                        .clickable { isEditingMode = true }
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
                     ) {
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Info,
+                                imageVector = if (mode == UiMode.CASHIER) Icons.Default.Person else Icons.Default.Storefront,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
@@ -531,99 +197,264 @@ fun DualModePinLoginScreen(
                             Spacer(modifier = Modifier.width(8.dp))
 
                             Text(
-                                text = "Mode Selection",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
+                                text = "Mode: ${mode.name.lowercase().capitalize()}",
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                         }
 
-                        Divider(
-                            color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.2f),
-                            modifier = Modifier.padding(vertical = 8.dp)
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Change Mode",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.PointOfSale,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(16.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = "Enter 1234 for Cashier Mode",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Storefront,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                modifier = Modifier.size(16.dp)
-                            )
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Text(
-                                text = "Enter 5678 for Kiosk Mode",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Email login button with enhanced styling
-            Button(
-                onClick = onBackToEmailLogin,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ),
-                shape = ButtonShape,
+            // PIN display
+            Text(
+                text = pin.replace(".".toRegex(), "•"),
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+                letterSpacing = 8.sp,
+                textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
+                    .padding(vertical = 16.dp)
+            )
+
+            // PIN keypad
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(horizontal = 24.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Default.Email,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
+                // Row 1: 1, 2, 3
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PinButton(digit = "1", onClick = { pin += "1" }, modifier = Modifier.weight(1f))
+                    PinButton(digit = "2", onClick = { pin += "2" }, modifier = Modifier.weight(1f))
+                    PinButton(digit = "3", onClick = { pin += "3" }, modifier = Modifier.weight(1f))
+                }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                // Row 2: 4, 5, 6
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PinButton(digit = "4", onClick = { pin += "4" }, modifier = Modifier.weight(1f))
+                    PinButton(digit = "5", onClick = { pin += "5" }, modifier = Modifier.weight(1f))
+                    PinButton(digit = "6", onClick = { pin += "6" }, modifier = Modifier.weight(1f))
+                }
 
-                Text(
-                    text = "Use Email Login Instead",
-                    style = MaterialTheme.typography.titleMedium
-                )
+                // Row 3: 7, 8, 9
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PinButton(digit = "7", onClick = { pin += "7" }, modifier = Modifier.weight(1f))
+                    PinButton(digit = "8", onClick = { pin += "8" }, modifier = Modifier.weight(1f))
+                    PinButton(digit = "9", onClick = { pin += "9" }, modifier = Modifier.weight(1f))
+                }
+
+                // Row 4: Delete, 0, Submit
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Delete button
+                    IconButton(
+                        onClick = {
+                            if (pin.isNotEmpty()) {
+                                pin = pin.substring(0, pin.length - 1)
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(CircleShape)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outline,
+                                shape = CircleShape
+                            )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Backspace,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+
+                    // 0 digit
+                    PinButton(digit = "0", onClick = { pin += "0" }, modifier = Modifier.weight(1f))
+
+                    // Submit button
+                    IconButton(
+                        onClick = {
+                            if (pin.length >= 4) {
+                                onPinSubmit(pin, mode)
+                            } else {
+                                showError = true
+                            }
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(1f)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowForward,
+                            contentDescription = "Submit",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Version info
+            // Action buttons
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Email login button
+                TextButton(
+                    onClick = onBackToEmailLogin
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Email Login")
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // NEW: Device Pairing button
+                TextButton(
+                    onClick = onDevicePairing
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Device Setup")
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * PIN keypad button component
+ */
+@Composable
+private fun PinButton(
+    digit: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = modifier
+            .aspectRatio(1f)
+            .clip(CircleShape)
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outline,
+                shape = CircleShape
+            )
+    ) {
+        Text(
+            text = digit,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.SemiBold
+            ),
+            color = MaterialTheme.colorScheme.onBackground
+        )
+    }
+}
+
+/**
+ * Mode selection button component
+ */
+@Composable
+private fun ModeButton(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val backgroundColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surface
+    }
+
+    val contentColor = if (isSelected) {
+        MaterialTheme.colorScheme.onPrimaryContainer
+    } else {
+        MaterialTheme.colorScheme.onSurface
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor
+        ),
+        shape = RoundedCornerShape(8.dp),
+        border = if (isSelected) {
+            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+        },
+        modifier = modifier
+            .width(120.dp)
+            .clickable(onClick = onClick)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = contentColor
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
             Text(
-                text = "Version 1.0.0",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
-                modifier = Modifier.padding(top = 16.dp)
+                text = title,
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor
             )
         }
     }
 }
 
+@Preview(showBackground = true)
+@Composable
+fun DualModePinLoginScreenPreview() {
+    RFMQuickPOSTheme {
+        DualModePinLoginScreen(
+            onPinSubmit = { _, _ -> },
+            onBackToEmailLogin = {},
+            onDevicePairing = {}
+        )
+    }
+}

@@ -53,11 +53,6 @@ class MainActivity : ComponentActivity() {
         // Initialize UiModeManager
         uiModeManager = UiModeManager(this)
 
-        // Force CASHIER mode during development
-        lifecycleScope.launch {
-            uiModeManager.setMode(UiMode.CASHIER)
-        }
-
         // Initialize ConnectivityManager
         connectivityManager = ConnectivityManager(this)
 
@@ -123,11 +118,12 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
 
-
+                                // Create the navigation controller
                                 val navController = rememberNavController()
 
-                                // With this code:
+                                // Use UnifiedNavigation and pass the navController
                                 UnifiedNavigation(
+                                    navController = navController, // FIX: Pass the navController
                                     startDestination = AuthScreen.PinLogin.route,
                                     uiMode = uiMode,
                                     onChangeMode = { newMode ->
@@ -149,7 +145,6 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun ApplySystemUIChanges(uiMode: UiMode) {
-        // Same implementation as before
         if (uiMode == UiMode.KIOSK) {
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             WindowCompat.setDecorFitsSystemWindows(window, false)
