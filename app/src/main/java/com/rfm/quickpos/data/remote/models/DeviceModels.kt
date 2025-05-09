@@ -46,6 +46,9 @@ data class DeviceAuthResponse(
 /**
  * Device data returned from API
  */
+
+
+// Add or update this field in the DeviceData class
 data class DeviceData(
     val id: String,
     val alias: String,
@@ -54,9 +57,9 @@ data class DeviceData(
     @SerializedName("company_schema") val companySchema: String? = null,
     @SerializedName("table_id") val tableId: String? = null,
     @SerializedName("is_active") val isActive: Boolean = true,
-    @SerializedName("ui_mode") val uiMode: String? = null,
+    @SerializedName("ui_mode") val uiMode: String? = null,  // "CASHIER" or "KIOSK"
 
-    // Additional fields from response
+    // Additional fields
     val serialNumber: String? = null,
     val model: String? = null,
     val appVersion: String? = null

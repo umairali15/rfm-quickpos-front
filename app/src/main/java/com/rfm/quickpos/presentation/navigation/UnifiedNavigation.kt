@@ -24,7 +24,6 @@ import com.rfm.quickpos.presentation.features.home.*
 import com.rfm.quickpos.presentation.features.history.*
 import com.rfm.quickpos.presentation.features.kiosk.*
 import com.rfm.quickpos.presentation.features.payment.*
-import com.rfm.quickpos.presentation.features.sale.*
 import com.rfm.quickpos.presentation.common.models.ActionCardData
 import java.util.Date
 

@@ -12,14 +12,19 @@ import com.rfm.quickpos.data.remote.models.DeviceAuthRequest
 import com.rfm.quickpos.data.remote.models.DeviceData
 import com.rfm.quickpos.data.remote.models.DeviceRegistrationRequest
 import com.rfm.quickpos.domain.model.UiMode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 private const val TAG = "DeviceRepository"
 
 /**
  * Repository for device management operations
+ * Enhanced to better integrate with backend UI mode selection
  */
 class DeviceRepository(
     private val apiService: ApiService,
@@ -31,6 +36,16 @@ class DeviceRepository(
 
     private val _uiMode = MutableStateFlow(credentialStore.getUiMode())
     val uiMode: StateFlow<UiMode> = _uiMode.asStateFlow()
+
+    // Add a polling interval for UI mode checks
+    private val uiModeCheckInterval = 1000 * 60 * 30L // 30 minutes
+
+    init {
+        // Set up periodic UI mode check if device is registered
+        if (isDeviceRegistered()) {
+            startPeriodicUiModeCheck()
+        }
+    }
 
     /**
      * Check if device is already registered
@@ -135,8 +150,13 @@ class DeviceRepository(
                 } ?: UiMode.CASHIER
 
                 _uiMode.value = newMode
+                credentialStore.saveUiMode(newMode)
 
                 Log.d(TAG, "Device registered successfully: ${deviceData.id}, Mode: $newMode")
+
+                // Start periodic UI mode checking after successful registration
+                startPeriodicUiModeCheck()
+
                 val success = DeviceRegistrationState.Success(deviceData.id)
                 _deviceRegistrationState.value = success
                 success
@@ -157,6 +177,7 @@ class DeviceRepository(
 
     /**
      * Authenticate a previously registered device
+     * Enhanced to better handle UI mode from the backend
      */
     suspend fun authenticateDevice(): DeviceRegistrationState {
         val deviceId = credentialStore.getDeviceId() ?:
@@ -176,16 +197,23 @@ class DeviceRepository(
                 credentialStore.saveDeviceInfo(response.device)
                 credentialStore.saveAuthToken(response.token)
 
-                // Update UI mode from response
-                val newMode = response.device.uiMode?.let {
+                // Update UI mode from response - prioritize the server's preference
+                val serverUiMode = response.device.uiMode?.let {
                     try {
                         UiMode.valueOf(it.uppercase())
                     } catch (e: IllegalArgumentException) {
-                        UiMode.CASHIER  // Default to cashier if invalid
+                        null // Invalid mode name
                     }
-                } ?: UiMode.CASHIER
+                }
+
+                // If server specified a UI mode, use it; otherwise, keep the current mode
+                val newMode = serverUiMode ?: _uiMode.value
+                if (serverUiMode != null && serverUiMode != _uiMode.value) {
+                    Log.d(TAG, "Server requested UI mode change: ${_uiMode.value} -> $serverUiMode")
+                }
 
                 _uiMode.value = newMode
+                credentialStore.saveUiMode(newMode)
 
                 val success = DeviceRegistrationState.Success(response.device.id)
                 _deviceRegistrationState.value = success
@@ -203,11 +231,56 @@ class DeviceRepository(
     }
 
     /**
-     * Update UI mode based on server configuration
+     * Update UI mode based on server configuration or local change
      */
     fun updateUiMode(mode: UiMode) {
         _uiMode.value = mode
         credentialStore.saveUiMode(mode)
+
+        // Optional: Report the UI mode change to the server
+        // This could be implemented in the future to keep the server in sync
+    }
+
+    /**
+     * Start periodic UI mode checks with the server
+     * This allows the backend to change the UI mode remotely
+     */
+    private fun startPeriodicUiModeCheck() {
+        CoroutineScope(Dispatchers.IO).launch {
+            // Log initialization of periodic checks
+            Log.d(TAG, "Starting periodic UI mode checks every ${uiModeCheckInterval/1000/60} minutes")
+
+            while (true) {
+                // Wait for the next check interval before first check
+                delay(uiModeCheckInterval)
+
+                // Only check if device is registered and authenticated
+                if (isDeviceRegistered() && credentialStore.getAuthToken() != null) {
+                    try {
+                        Log.d(TAG, "Performing periodic UI mode check")
+                        // Re-authenticate to get the latest UI mode
+                        authenticateDevice()
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error during periodic UI mode check", e)
+                    }
+                } else {
+                    Log.d(TAG, "Skipping UI mode check - device not registered or not authenticated")
+                }
+            }
+        }
+    }
+
+    /**
+     * Check for UI mode update now
+     * Can be called manually when more immediate update is needed
+     */
+    suspend fun checkUiModeUpdate() {
+        if (isDeviceRegistered() && credentialStore.getAuthToken() != null) {
+            Log.d(TAG, "Manually checking for UI mode updates")
+            authenticateDevice()
+        } else {
+            Log.d(TAG, "Cannot check UI mode - device not registered or not authenticated")
+        }
     }
 }
 

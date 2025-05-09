@@ -1,69 +1,42 @@
+// app/src/main/java/com/rfm/quickpos/presentation/features/home/DashboardScreen.kt
+
 package com.rfm.quickpos.presentation.features.home
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.DoNotDisturbOn
-import androidx.compose.material.icons.filled.Logout
-import androidx.compose.material.icons.filled.Money
-import androidx.compose.material.icons.filled.People
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.rfm.quickpos.presentation.common.components.RfmCard
-import com.rfm.quickpos.presentation.common.components.RfmElevatedCard
-import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
-import com.rfm.quickpos.presentation.debug.DebugMenu
-
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.navigation.NavController
+import com.rfm.quickpos.domain.model.UiMode
 import com.rfm.quickpos.presentation.common.models.ActionCardData
-
+import com.rfm.quickpos.presentation.debug.DebugMenu
+import java.text.SimpleDateFormat
+import java.util.*
 
 /**
- * Simplified Dashboard Screen that serves as the home page of the app
- * Updated to include debug menu during development and shift management actions
+ * Modern dashboard screen with improved design and functionality
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,22 +47,25 @@ fun DashboardScreen(
     onOrdersClicked: () -> Unit,
     onCatalogClicked: () -> Unit,
     onCustomersClicked: () -> Unit,
-    onLogoutClick: () -> Unit = {},
     onSettingsClicked: () -> Unit,
     userName: String,
     modifier: Modifier = Modifier,
-    // Add this parameter to accept shift-related actions:
     additionalActions: List<ActionCardData> = emptyList(),
-    // Optional navController to pass to debug menu
-    navController: androidx.navigation.NavController? = null,
-    // Optional uiMode and onChangeMode to pass to debug menu
-    currentUiMode: com.rfm.quickpos.domain.model.UiMode? = null,
-    onChangeMode: ((com.rfm.quickpos.domain.model.UiMode) -> Unit)? = null
+    navController: NavController? = null,
+    currentUiMode: UiMode? = null,
+    onChangeMode: ((UiMode) -> Unit)? = null,
+    onLogout: () -> Unit = {},
+    onLogoutClick: () -> Unit?
 ) {
-    // State to show/hide the debug menu (optional, only for development phase)
+    // Debug menu and profile menu visibility states
     var showDebugMenu by remember { mutableStateOf(false) }
+    var showProfileMenu by remember { mutableStateOf(false) }
 
-    // Show debug menu if state is true and we have necessary parameters
+    // Current date display
+    val dateFormatter = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault())
+    val currentDate = dateFormatter.format(Date())
+
+    // Show debug menu if requested
     if (showDebugMenu && navController != null && currentUiMode != null && onChangeMode != null) {
         DebugMenu(
             navController = navController,
@@ -99,58 +75,93 @@ fun DashboardScreen(
         )
     }
 
+    // Profile menu dialog
+    if (showProfileMenu) {
+        ProfileMenuDialog(
+            userName = userName,
+            onDismiss = { showProfileMenu = false },
+            onLogout = {
+                showProfileMenu = false
+                onLogout()
+            },
+            onSettings = {
+                showProfileMenu = false
+                onSettingsClicked()
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "RFM QuickPOS",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold
+            // Modern top app bar with gradient background
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                            )
                         )
                     )
-                },
-                actions = {
-                    // Debug mode button (only visible during development)
-                    IconButton(onClick = { showDebugMenu = true }) {
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // App title and logo
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.BugReport,
-                            contentDescription = "Debug Menu",
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                            imageVector = Icons.Default.Speed,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(28.dp)
                         )
-                    }
-
-                    // Normal settings button
-                    IconButton(onClick = onSettingsClicked) {
-                        Icon(
-                            imageVector = Icons.Outlined.Settings,
-                            contentDescription = "Settings"
-                        )
-                    }
-                    IconButton(onClick = onLogoutClick) {
-                        Icon(
-                            imageVector = Icons.Default.Logout,
-                            contentDescription = "Logout"
-                        )
-                    }
-
-                    // User avatar
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .padding(end = 12.dp)
-                            .size(40.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer)
-                    ) {
+                        Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = userName.firstOrNull()?.toString() ?: "U",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                            text = "RFM QuickPOS",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
                         )
+                    }
+
+                    // Action buttons
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Debug button (only in development)
+                        IconButton(onClick = { showDebugMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.BugReport,
+                                contentDescription = "Debug Menu",
+                                tint = Color.White.copy(alpha = 0.8f)
+                            )
+                        }
+
+                        // User profile button
+                        IconButton(onClick = { showProfileMenu = true }) {
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(Color.White.copy(alpha = 0.2f))
+                            ) {
+                                Text(
+                                    text = userName.first().toString(),
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
-            )
+            }
         }
     ) { paddingValues ->
         Column(
@@ -158,27 +169,103 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
-            // Welcome message
+            // Greeting and date section with animation
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn(animationSpec = tween(500)) +
+                        slideInVertically(animationSpec = tween(500)) { it / 2 }
+            ) {
+                Column {
+                    // Welcome message
+                    Text(
+                        text = "Hello, $userName",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 24.sp
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+
+                    // Current date
+                    Text(
+                        text = currentDate,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
+
+            // Quick action - New Sale button (prominent)
+            ElevatedCard(
+                onClick = onNewSaleClicked,
+                colors = CardDefaults.elevatedCardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
+                ),
+                elevation = CardDefaults.elevatedCardElevation(
+                    defaultElevation = 4.dp
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ShoppingCart,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "New Sale",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+
+                        Text(
+                            text = "Start a new transaction",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        )
+                    }
+
+                    Icon(
+                        imageVector = Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Key metrics with modern design
             Text(
-                text = "Hello, $userName",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onBackground
+                text = "Today's Overview",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                modifier = Modifier.padding(top = 8.dp, bottom = 12.dp)
             )
 
-            Text(
-                text = "What would you like to do today?",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Key metrics in a row
+            // Metrics cards in a grid layout
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Sales metric
                 MetricCard(
@@ -190,8 +277,6 @@ fun DashboardScreen(
                     modifier = Modifier.weight(1f)
                 )
 
-                Spacer(modifier = Modifier.width(12.dp))
-
                 // Orders metric
                 MetricCard(
                     title = "Avg. Sale",
@@ -201,8 +286,6 @@ fun DashboardScreen(
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.weight(1f)
                 )
-
-                Spacer(modifier = Modifier.width(12.dp))
 
                 // Customers metric
                 MetricCard(
@@ -215,126 +298,68 @@ fun DashboardScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Main actions grid - 2x3 layout
+            // Quick Actions Section
             Text(
                 text = "Quick Actions",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 16.dp)
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                modifier = Modifier.padding(bottom = 12.dp)
             )
 
-            // First row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // New Sale - featured prominently
-                ActionCard(
-                    title = "New Sale",
-                    icon = Icons.Default.ShoppingCart,
-                    onClick = onNewSaleClicked,
-                    backgroundColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.weight(1f)
+            // Grid of actions - 2 columns
+            GridActions(
+                actions = listOf(
+                    ActionItem(
+                        title = "Orders",
+                        icon = Icons.Outlined.Receipt,
+                        onClick = onOrdersClicked
+                    ),
+                    ActionItem(
+                        title = "Catalog",
+                        icon = Icons.Outlined.ShoppingBag,
+                        onClick = onCatalogClicked
+                    ),
+                    ActionItem(
+                        title = "Reports",
+                        icon = Icons.Outlined.Description,
+                        onClick = onReportsClicked
+                    ),
+                    ActionItem(
+                        title = "Customers",
+                        icon = Icons.Outlined.Person,
+                        onClick = onCustomersClicked
+                    )
                 )
+            )
 
-                // Orders
-                ActionCard(
-                    title = "Orders",
-                    icon = Icons.Default.Receipt,
-                    onClick = onOrdersClicked,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Second row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Catalog
-                ActionCard(
-                    title = "Catalog",
-                    icon = Icons.Default.ShoppingBag,
-                    onClick = onCatalogClicked,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Reports
-                ActionCard(
-                    title = "Reports",
-                    icon = Icons.Default.Description,
-                    onClick = onReportsClicked,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Third row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // Customers
-                ActionCard(
-                    title = "Customers",
-                    icon = Icons.Default.Person,
-                    onClick = onCustomersClicked,
-                    modifier = Modifier.weight(1f)
-                )
-
-                // Dashboard (placeholder)
-                ActionCard(
-                    title = "Dashboard",
-                    icon = Icons.Default.Dashboard,
-                    onClick = { /* Not implemented in demo */ },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            // Display additional actions if provided (shift management)
+            // Show additional actions (shift management) if provided
             if (additionalActions.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // Shift Management section header
                 Text(
                     text = "Shift Management",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
 
-                // Create rows of shift actions (2 columns per row)
-                val rows = additionalActions.chunked(2)
-                rows.forEach { rowActions ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        rowActions.forEach { action ->
-                            ActionCard(
-                                title = action.title,
-                                icon = action.icon,
-                                onClick = action.onClick,
-                                backgroundColor = action.backgroundColor,
-                                contentColor = action.contentColor,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-
-                        // Add spacer if only one item in the row to maintain alignment
-                        if (rowActions.size == 1) {
-                            Spacer(modifier = Modifier.weight(1f))
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
+                // Create rows of shift actions with modern styling
+                val shiftActions = additionalActions.map { action ->
+                    ActionItem(
+                        title = action.title,
+                        icon = action.icon,
+                        onClick = action.onClick,
+                        backgroundColor = action.backgroundColor,
+                        contentColor = action.contentColor
+                    )
                 }
+
+                GridActions(actions = shiftActions)
             }
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -343,10 +368,139 @@ fun DashboardScreen(
 }
 
 /**
- * Compact metric card component
+ * Profile menu dialog component
  */
 @Composable
-fun MetricCard(
+private fun ProfileMenuDialog(
+    userName: String,
+    onDismiss: () -> Unit,
+    onLogout: () -> Unit,
+    onSettings: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 6.dp
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(24.dp)
+            ) {
+                // User avatar
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                ) {
+                    Text(
+                        text = userName.first().toString(),
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // User name
+                Text(
+                    text = userName,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+
+                Text(
+                    text = "Cashier",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Menu options
+                ProfileMenuItem(
+                    icon = Icons.Default.Settings,
+                    text = "Settings",
+                    onClick = onSettings
+                )
+
+                ProfileMenuItem(
+                    icon = Icons.Default.Logout,
+                    text = "Logout",
+                    onClick = onLogout,
+                    tint = MaterialTheme.colorScheme.error
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Close button
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text("Cancel")
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Profile menu item component
+ */
+@Composable
+private fun ProfileMenuItem(
+    icon: ImageVector,
+    text: String,
+    onClick: () -> Unit,
+    tint: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Surface(
+        onClick = onClick,
+        color = Color.Transparent,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp, horizontal = 8.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = tint
+            )
+        }
+    }
+}
+
+/**
+ * Modern metric card component
+ */
+@Composable
+private fun MetricCard(
     title: String,
     value: String,
     icon: ImageVector,
@@ -354,42 +508,113 @@ fun MetricCard(
     backgroundColor: Color = MaterialTheme.colorScheme.surface,
     contentColor: Color = MaterialTheme.colorScheme.onSurface
 ) {
-    RfmElevatedCard(
-        containerColor = backgroundColor,
-        contentColor = contentColor,
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor
+        ),
+        shape = RoundedCornerShape(12.dp),
         modifier = modifier
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(vertical = 16.dp, horizontal = 8.dp)
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp)
+                tint = contentColor,
+                modifier = Modifier.size(28.dp)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = value,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold
+                ),
+                color = contentColor
             )
 
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodyMedium,
+                color = contentColor.copy(alpha = 0.8f)
             )
         }
     }
 }
 
 /**
- * Action card for quick access to app features
+ * Data class for action items in the grid
+ */
+private data class ActionItem(
+    val title: String,
+    val icon: ImageVector,
+    val onClick: () -> Unit,
+    val backgroundColor: Color = Color.Transparent,
+    val contentColor: Color = Color.Unspecified
+)
+
+/**
+ * Grid layout for action buttons
  */
 @Composable
-fun ActionCard(
+private fun GridActions(
+    actions: List<ActionItem>,
+    columns: Int = 2
+) {
+    // Calculate number of rows needed
+    val rows = (actions.size + columns - 1) / columns
+
+    // Create grid layout
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        for (row in 0 until rows) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                for (col in 0 until columns) {
+                    val index = row * columns + col
+                    if (index < actions.size) {
+                        val action = actions[index]
+
+                        // Use custom colors if provided, otherwise use defaults
+                        val backgroundColor = if (action.backgroundColor != Color.Transparent) {
+                            action.backgroundColor
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant
+                        }
+
+                        val contentColor = if (action.contentColor != Color.Unspecified) {
+                            action.contentColor
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+
+                        ActionCard(
+                            title = action.title,
+                            icon = action.icon,
+                            onClick = action.onClick,
+                            backgroundColor = backgroundColor,
+                            contentColor = contentColor,
+                            modifier = Modifier.weight(1f)
+                        )
+                    } else {
+                        // Empty space to maintain grid layout
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Modern action card component
+ */
+@Composable
+private fun ActionCard(
     title: String,
     icon: ImageVector,
     onClick: () -> Unit,
@@ -397,12 +622,13 @@ fun ActionCard(
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant,
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
-    RfmCard(
-        containerColor = backgroundColor,
-        contentColor = contentColor,
+    Card(
         onClick = onClick,
-        elevation = 1f,
-        modifier = modifier.height(100.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor
+        ),
+        shape = RoundedCornerShape(16.dp),
+        modifier = modifier.height(110.dp)
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -414,79 +640,19 @@ fun ActionCard(
             Icon(
                 imageVector = icon,
                 contentDescription = title,
-                modifier = Modifier.size(32.dp)
+                tint = contentColor,
+                modifier = Modifier.size(36.dp)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Medium
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DashboardScreenPreview() {
-    // Sample data
-    val metrics = DashboardMetrics(
-        totalSales = "2,148",
-        salesAmount = "16.94",
-        customers = "126.8",
-        dateRange = "01.01.2024 - 01.01.2025",
-        paymentMethodChart = PaymentMethodsData(
-            cashPercentage = 35f,
-            cardPercentage = 65f
-        )
-    )
-
-    // Sample shift actions for preview
-    val additionalActions = listOf(
-        ActionCardData(
-            title = "Open Shift",
-            icon = Icons.Default.PlayArrow,
-            onClick = { },
-            backgroundColor = Color(0xFF2196F3),
-            contentColor = Color.White
-        ),
-        ActionCardData(
-            title = "Cash In",
-            icon = Icons.Default.ArrowDownward,
-            onClick = { },
-            backgroundColor = Color(0xFF00C853),
-            contentColor = Color.White
-        ),
-        ActionCardData(
-            title = "Cash Out",
-            icon = Icons.Default.ArrowUpward,
-            onClick = { },
-            backgroundColor = Color(0xFFFF5252),
-            contentColor = Color.White
-        ),
-        ActionCardData(
-            title = "Close Shift",
-            icon = Icons.Default.DoNotDisturbOn,
-            onClick = { },
-            backgroundColor = Color(0xFFFFAB00),
-            contentColor = Color.Black
-        )
-    )
-
-    RFMQuickPOSTheme {
-        Surface {
-            DashboardScreen(
-                metrics = metrics,
-                onNewSaleClicked = {},
-                onReportsClicked = {},
-                onOrdersClicked = {},
-                onCatalogClicked = {},
-                onCustomersClicked = {},
-                onSettingsClicked = {},
-                userName = "Ahmed",
-                additionalActions = additionalActions
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                color = contentColor,
+                textAlign = TextAlign.Center
             )
         }
     }
