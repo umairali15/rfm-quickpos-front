@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,11 +32,9 @@ import androidx.compose.ui.unit.sp
 import com.rfm.quickpos.R
 import com.rfm.quickpos.domain.model.UiMode
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
+import com.rfm.quickpos.QuickPOSApplication
 
-/**
- * PIN-based login screen that also determines the UI mode (Cashier or Kiosk)
- * Now includes a device pairing option.
- */
+
 @Composable
 fun DualModePinLoginScreen(
     onPinSubmit: (pin: String, mode: UiMode) -> Unit,
@@ -44,14 +43,37 @@ fun DualModePinLoginScreen(
     errorMessage: String? = null,
     modifier: Modifier = Modifier
 ) {
+    // Get application context
+    val context = LocalContext.current
+    val app = context.applicationContext as QuickPOSApplication
+
+    // Create view model
+    val viewModel = remember {
+        PinLoginViewModel(app.authRepository, app.deviceRepository)
+    }
+
+    // Collect states
+    val viewState by viewModel.viewState.collectAsState()
+    val uiMode by viewModel.uiMode.collectAsState()
+
+    // Handle authentication result
+    LaunchedEffect(viewState.isAuthenticated) {
+        if (viewState.isAuthenticated) {
+            // Authentication successful, call the callback
+            onPinSubmit("", uiMode) // We don't need to pass the actual PIN back
+        }
+    }
+
     var pin by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf(UiMode.CASHIER) }
     var isEditingMode by remember { mutableStateOf(false) }
+    // Update error message display
     var showError by remember { mutableStateOf(false) }
+    val currentError = viewState.errorMessage ?: errorMessage
 
-    // Update error state when errorMessage changes
-    LaunchedEffect(errorMessage) {
-        showError = errorMessage != null
+    // Update error state when error message changes
+    LaunchedEffect(currentError) {
+        showError = currentError != null
     }
 
     // Background gradient
@@ -296,8 +318,9 @@ fun DualModePinLoginScreen(
                     IconButton(
                         onClick = {
                             if (pin.length >= 4) {
-                                onPinSubmit(pin, mode)
+                                viewModel.authenticateWithPin(pin, mode)
                             } else {
+                                viewModel.clearError()
                                 showError = true
                             }
                         },

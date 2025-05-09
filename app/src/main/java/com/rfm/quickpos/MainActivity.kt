@@ -1,3 +1,5 @@
+// app/src/main/java/com/rfm/quickpos/MainActivity.kt
+
 package com.rfm.quickpos
 
 import android.os.Bundle
@@ -10,48 +12,52 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.rememberNavController
+import com.rfm.quickpos.data.repository.AuthRepository
+import com.rfm.quickpos.data.repository.DeviceRepository
 import com.rfm.quickpos.domain.manager.ConnectivityManager
-import com.rfm.quickpos.domain.manager.UiModeManager
 import com.rfm.quickpos.domain.model.UiMode
 import com.rfm.quickpos.presentation.common.components.ConnectivityBanner
 import com.rfm.quickpos.presentation.common.components.FeatureFlagProvider
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
+import com.rfm.quickpos.presentation.features.setup.DevicePairingScreen
+import com.rfm.quickpos.presentation.features.setup.DevicePairingViewModel
 import com.rfm.quickpos.presentation.features.splash.SplashScreen
 import com.rfm.quickpos.presentation.navigation.AuthScreen
 import com.rfm.quickpos.presentation.navigation.UnifiedNavigation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    // Create UiModeManager
-    private lateinit var uiModeManager: UiModeManager
-
-    // Create ConnectivityManager
+    // Repositories
+    private lateinit var deviceRepository: DeviceRepository
+    private lateinit var authRepository: AuthRepository
     private lateinit var connectivityManager: ConnectivityManager
 
-    // Track initialization state
-    private val _isInitialized = MutableStateFlow(false)
-    val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
+    // App state
+    private val _appState = MutableStateFlow<AppState>(AppState.Initializing)
+    val appState: StateFlow<AppState> = _appState.asStateFlow()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // Initialize UiModeManager
-        uiModeManager = UiModeManager(this)
+        // Get repositories from application
+        deviceRepository = (application as QuickPOSApplication).deviceRepository
+        authRepository = (application as QuickPOSApplication).authRepository
 
         // Initialize ConnectivityManager
         connectivityManager = ConnectivityManager(this)
@@ -63,28 +69,21 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Simulate app initialization process
-        lifecycleScope.launch {
-            delay(1000) // Shorter delay for development
-            _isInitialized.value = true
-        }
+        // Initialize app state
+        initializeAppState()
 
         setContent {
             // Get current UI mode
-            val uiMode by uiModeManager.currentMode.collectAsState()
+            val uiMode by deviceRepository.uiMode.collectAsState()
 
             // Get connectivity status
             val connectivityStatus by connectivityManager.connectionStatus.collectAsState()
 
             // Get pending sync count
-            val pendingSyncCount by connectivityManager.pendingSyncCount.stateIn(
-                lifecycleScope,
-                SharingStarted.WhileSubscribed(5000),
-                0
-            ).collectAsState()
+            val pendingSyncCount by connectivityManager.pendingSyncCount.collectAsState()
 
-            // Track initialization state
-            val initialized by isInitialized.collectAsState()
+            // Get current app state
+            val currentAppState by appState.collectAsState()
 
             // Apply system UI changes based on mode
             ApplySystemUIChanges(uiMode)
@@ -97,45 +96,157 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize(),
                         color = MaterialTheme.colorScheme.background
                     ) {
-                        if (!initialized) {
-                            // Show splash screen during initialization
-                            SplashScreen(
-                                onInitializationComplete = {
-                                    // This won't be called - we're controlling initialization via _isInitialized
+                        when (currentAppState) {
+                            AppState.Initializing -> {
+                                // Show splash screen during initialization
+                                SplashScreen(
+                                    onInitializationComplete = { /* Controlled by state machine */ }
+                                )
+                            }
+                            AppState.NeedsDeviceRegistration -> {
+                                // Create device pairing view model
+                                val viewModel = remember {
+                                    DevicePairingViewModel(deviceRepository)
                                 }
-                            )
-                        } else {
-                            // Main app content with connectivity banner
-                            Column {
-                                // Global connectivity banner
-                                ConnectivityBanner(
-                                    status = connectivityStatus,
-                                    pendingSyncCount = pendingSyncCount,
-                                    onRetryClick = {
-                                        lifecycleScope.launch {
-                                            connectivityManager.retryPendingSync()
-                                        }
+
+                                // Show device pairing screen
+                                DevicePairingScreen(
+                                    state = viewModel.state.collectAsState().value,
+                                    onPairingInfoChange = { viewModel.updatePairingInfo(it) },
+                                    onPairingSubmit = {
+                                        viewModel.submitPairing()
+                                    },
+                                    onSkipSetup = {
+                                        // For development, allow skipping
+                                        _appState.value = AppState.Ready
                                     }
                                 )
 
-                                // Create the navigation controller
-                                val navController = rememberNavController()
-
-                                // Use UnifiedNavigation and pass the navController
-                                UnifiedNavigation(
-                                    navController = navController, // FIX: Pass the navController
-                                    startDestination = AuthScreen.PinLogin.route,
-                                    uiMode = uiMode,
-                                    onChangeMode = { newMode ->
-                                        lifecycleScope.launch {
-                                            uiModeManager.setMode(newMode)
+                                // Observe device registration success
+                                LaunchedEffect(viewModel.state) {
+                                    val state = viewModel.state.first()
+                                    if (state.isPaired) {
+                                        // If device is paired, move to ready state
+                                        if (uiMode == UiMode.KIOSK) {
+                                            // Kiosk mode doesn't need user login
+                                            _appState.value = AppState.Ready
+                                        } else {
+                                            // Cashier mode needs user login
+                                            _appState.value = AppState.NeedsAuthentication
                                         }
                                     }
-                                )
+                                }
+                            }
+                            AppState.NeedsAuthentication -> {
+                                // Main app content with connectivity banner and PIN login
+                                Column {
+                                    // Global connectivity banner
+                                    ConnectivityBanner(
+                                        status = connectivityStatus,
+                                        pendingSyncCount = pendingSyncCount,
+                                        onRetryClick = {
+                                            lifecycleScope.launch {
+                                                connectivityManager.retryPendingSync()
+                                            }
+                                        }
+                                    )
+
+                                    // Create the navigation controller
+                                    val navController = rememberNavController()
+
+                                    // Use UnifiedNavigation with PIN login as the start
+                                    UnifiedNavigation(
+                                        navController = navController,
+                                        startDestination = AuthScreen.PinLogin.route,
+                                        uiMode = uiMode,
+                                        onChangeMode = { newMode ->
+                                            lifecycleScope.launch {
+                                                deviceRepository.updateUiMode(newMode)
+                                            }
+                                        },
+                                        onLoginSuccess = {
+                                            // When login is successful, transition to Ready state
+                                            _appState.value = AppState.Ready
+                                        }
+                                    )
+                                }
+                            }
+                            AppState.Ready -> {
+                                // Main app content with connectivity banner
+                                Column {
+                                    // Global connectivity banner
+                                    ConnectivityBanner(
+                                        status = connectivityStatus,
+                                        pendingSyncCount = pendingSyncCount,
+                                        onRetryClick = {
+                                            lifecycleScope.launch {
+                                                connectivityManager.retryPendingSync()
+                                            }
+                                        }
+                                    )
+
+                                    // Create the navigation controller
+                                    val navController = rememberNavController()
+
+                                    // Use UnifiedNavigation with the appropriate start destination
+                                    UnifiedNavigation(
+                                        navController = navController,
+                                        // Skip to the home screen since we're already authenticated
+                                        startDestination = if (uiMode == UiMode.CASHIER)
+                                            "dashboard" else "kiosk_attract",
+                                        uiMode = uiMode,
+                                        onChangeMode = { newMode ->
+                                            lifecycleScope.launch {
+                                                deviceRepository.updateUiMode(newMode)
+                                            }
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * Initialize app state based on device registration and authentication status
+     */
+    private fun initializeAppState() {
+        lifecycleScope.launch {
+            // Start with initializing state
+            _appState.value = AppState.Initializing
+
+            // Simulate splash screen delay
+            delay(1500)
+
+            // Check if device is registered
+            if (!deviceRepository.isDeviceRegistered()) {
+                _appState.value = AppState.NeedsDeviceRegistration
+                return@launch
+            }
+
+            // Try to authenticate device
+            try {
+                deviceRepository.authenticateDevice()
+                // Device authenticated successfully
+
+                // Check UI mode to determine next step
+                if (deviceRepository.uiMode.first() == UiMode.KIOSK) {
+                    // Kiosk mode doesn't need user authentication
+                    _appState.value = AppState.Ready
+                } else {
+                    // In Cashier mode, check if user is authenticated
+                    if (authRepository.isAuthenticated()) {
+                        _appState.value = AppState.Ready
+                    } else {
+                        _appState.value = AppState.NeedsAuthentication
+                    }
+                }
+            } catch (e: Exception) {
+                // Failed to authenticate device, need to re-register
+                _appState.value = AppState.NeedsDeviceRegistration
             }
         }
     }
@@ -173,4 +284,21 @@ class MainActivity : ComponentActivity() {
         const val ACTION_SET_KIOSK_MODE = "com.rfm.quickpos.SET_KIOSK_MODE"
         const val EXTRA_ENABLE_KIOSK = "enable_kiosk"
     }
+}
+
+/**
+ * States for the app startup flow
+ */
+sealed class AppState {
+    // App is initializing (splash screen)
+    object Initializing : AppState()
+
+    // Device needs to be registered with the backend
+    object NeedsDeviceRegistration : AppState()
+
+    // User needs to log in (cashier mode only)
+    object NeedsAuthentication : AppState()
+
+    // All set up and ready to use the app
+    object Ready : AppState()
 }

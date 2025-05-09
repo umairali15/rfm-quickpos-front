@@ -1,5 +1,32 @@
+// app/src/main/java/com/rfm/quickpos/data/remote/api/ApiService.kt
+
 package com.rfm.quickpos.data.remote.api
 
+import com.rfm.quickpos.data.remote.models.DeviceAuthRequest
+import com.rfm.quickpos.data.remote.models.DeviceAuthResponse
+import com.rfm.quickpos.data.remote.models.DeviceRegistrationRequest
+import com.rfm.quickpos.data.remote.models.DeviceRegistrationResponse
+import com.rfm.quickpos.data.remote.models.UserAuthRequest
+import com.rfm.quickpos.data.remote.models.UserAuthResponse
+import retrofit2.http.Body
+import retrofit2.http.POST
+
 interface ApiService {
-    // Will add API endpoints later
+    /**
+     * Register a new device with the server
+     */
+    @POST("api/auth/device/register")
+    suspend fun registerDevice(@Body request: DeviceRegistrationRequest): DeviceRegistrationResponse
+
+    /**
+     * Authenticate a previously registered device
+     */
+    @POST("api/auth/device/authenticate")
+    suspend fun authenticateDevice(@Body request: DeviceAuthRequest): DeviceAuthResponse
+
+    /**
+     * Authenticate a user via PIN login
+     */
+    @POST("api/auth/login")
+    suspend fun loginUser(@Body request: UserAuthRequest): UserAuthResponse
 }

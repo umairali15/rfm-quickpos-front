@@ -38,7 +38,8 @@ fun UnifiedNavigation(
     navController: NavHostController = rememberNavController(),
     startDestination: String = AuthScreen.PinLogin.route,
     uiMode: UiMode,
-    onChangeMode: (UiMode) -> Unit
+    onChangeMode: (UiMode) -> Unit,
+    onLoginSuccess: (() -> Unit)? = null // Add this callback parameter
 ) {
     // Debug menu state
     var showDebugMenu by remember { mutableStateOf(false) }
@@ -74,10 +75,12 @@ fun UnifiedNavigation(
                         // Check if a shift is open, otherwise go to open shift screen
                         if (isShiftOpen) {
                             navigateToHomeScreen(navController, UiMode.CASHIER)
+                            onLoginSuccess?.invoke() // Call login success callback
                         } else {
                             navController.navigate(Screen.OpenShift.route) {
                                 popUpTo(0) { inclusive = true }
                             }
+                            onLoginSuccess?.invoke() // Call login success callback
                         }
                     }
                 },
@@ -87,6 +90,7 @@ fun UnifiedNavigation(
                 }
             )
         }
+
 
         composable(AuthScreen.PinLogin.route) {
             DualModePinLoginScreen(
@@ -98,14 +102,17 @@ fun UnifiedNavigation(
                     if (mode == UiMode.CASHIER) {
                         if (isShiftOpen) {
                             navigateToHomeScreen(navController, mode)
+                            onLoginSuccess?.invoke() // Call login success callback
                         } else {
                             navController.navigate(Screen.OpenShift.route) {
                                 popUpTo(0) { inclusive = true }
                             }
+                            onLoginSuccess?.invoke() // Call login success callback
                         }
                     } else {
                         // For Kiosk mode, go directly to attract screen
                         navigateToHomeScreen(navController, mode)
+                        onLoginSuccess?.invoke() // Call login success callback
                     }
                 },
                 onBackToEmailLogin = {
