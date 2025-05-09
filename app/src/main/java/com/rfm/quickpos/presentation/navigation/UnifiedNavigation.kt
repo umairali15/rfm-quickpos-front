@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.navigation.*
 import androidx.navigation.compose.*
+import com.rfm.quickpos.data.repository.DeviceRepository
 import com.rfm.quickpos.domain.model.DevicePairingInfo
 import com.rfm.quickpos.domain.model.PairingStatus
 import com.rfm.quickpos.domain.model.UiMode
@@ -39,7 +40,9 @@ fun UnifiedNavigation(
     startDestination: String = AuthScreen.PinLogin.route,
     uiMode: UiMode,
     onChangeMode: (UiMode) -> Unit,
-    onLoginSuccess: (() -> Unit)? = null // Add this callback parameter
+    onLoginSuccess: (() -> Unit)? = null,
+    deviceRepository: DeviceRepository? = null
+
 ) {
     // Debug menu state
     var showDebugMenu by remember { mutableStateOf(false) }
@@ -98,22 +101,24 @@ fun UnifiedNavigation(
                     // Set UI mode based on PIN
                     onChangeMode(mode)
 
-                    // For Cashier mode, check if a shift is open
-                    if (mode == UiMode.CASHIER) {
+                    // After successful login, check if device is registered
+                    if (deviceRepository?.isDeviceRegistered() == false) {
+                        // Go to device registration
+                        navController.navigate(Screen.DevicePairing.route)
+                    } else if (mode == UiMode.CASHIER) {
+                        // Regular cashier flow
                         if (isShiftOpen) {
                             navigateToHomeScreen(navController, mode)
-                            onLoginSuccess?.invoke() // Call login success callback
                         } else {
-                            navController.navigate(Screen.OpenShift.route) {
-                                popUpTo(0) { inclusive = true }
-                            }
-                            onLoginSuccess?.invoke() // Call login success callback
+                            navController.navigate(Screen.OpenShift.route)
                         }
                     } else {
-                        // For Kiosk mode, go directly to attract screen
+                        // Kiosk mode
                         navigateToHomeScreen(navController, mode)
-                        onLoginSuccess?.invoke() // Call login success callback
                     }
+
+                    // Signal login success
+                    onLoginSuccess?.invoke()
                 },
                 onBackToEmailLogin = {
                     navController.navigate(AuthScreen.Login.route) {

@@ -165,9 +165,14 @@ class MainActivity : ComponentActivity() {
                                             }
                                         },
                                         onLoginSuccess = {
-                                            // When login is successful, transition to Ready state
-                                            _appState.value = AppState.Ready
-                                        }
+                                            // When login is successful, transition to appropriate state
+                                            if (deviceRepository.isDeviceRegistered()) {
+                                                _appState.value = AppState.Ready
+                                            } else {
+                                                _appState.value = AppState.NeedsDeviceRegistration
+                                            }
+                                        },
+                                        deviceRepository = deviceRepository // Pass the repository
                                     )
                                 }
                             }
@@ -220,6 +225,9 @@ class MainActivity : ComponentActivity() {
 
             // Simulate splash screen delay
             delay(1500)
+
+            // First step should be authentication
+            _appState.value = AppState.NeedsAuthentication
 
             // Check if device is registered
             if (!deviceRepository.isDeviceRegistered()) {
@@ -293,11 +301,13 @@ sealed class AppState {
     // App is initializing (splash screen)
     object Initializing : AppState()
 
-    // Device needs to be registered with the backend
-    object NeedsDeviceRegistration : AppState()
 
     // User needs to log in (cashier mode only)
     object NeedsAuthentication : AppState()
+
+    // Device needs to be registered with the backend
+    object NeedsDeviceRegistration : AppState()
+
 
     // All set up and ready to use the app
     object Ready : AppState()

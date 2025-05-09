@@ -66,6 +66,12 @@ class DeviceRepository(
     suspend fun registerDevice(pairingCode: String): DeviceRegistrationState {
         _deviceRegistrationState.value = DeviceRegistrationState.Loading
 
+        // The auth token should already be available from prior user login
+        val authToken = credentialStore.getAuthToken()
+        if (authToken == null) {
+            return DeviceRegistrationState.Error("Authentication required before device registration")
+        }
+
         return try {
             // For registration, we use the pairing code as the alias
             // You may want to add a proper alias input field in your UI
