@@ -16,12 +16,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.DoNotDisturbOn
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Money
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Person
@@ -72,6 +74,7 @@ fun DashboardScreen(
     onOrdersClicked: () -> Unit,
     onCatalogClicked: () -> Unit,
     onCustomersClicked: () -> Unit,
+    onLogoutClick: () -> Unit = {},
     onSettingsClicked: () -> Unit,
     userName: String,
     modifier: Modifier = Modifier,
@@ -124,6 +127,12 @@ fun DashboardScreen(
                             contentDescription = "Settings"
                         )
                     }
+                    IconButton(onClick = onLogoutClick) {
+                        Icon(
+                            imageVector = Icons.Default.Logout,
+                            contentDescription = "Logout"
+                        )
+                    }
 
                     // User avatar
                     Box(
@@ -135,7 +144,7 @@ fun DashboardScreen(
                             .background(MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Text(
-                            text = userName.first().toString(),
+                            text = userName.firstOrNull()?.toString() ?: "U",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )

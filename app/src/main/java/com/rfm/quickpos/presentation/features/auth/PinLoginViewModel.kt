@@ -2,6 +2,7 @@
 
 package com.rfm.quickpos.presentation.features.auth
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rfm.quickpos.data.repository.AuthRepository
@@ -13,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+
+private const val TAG = "PinLoginViewModel"
 
 /**
  * ViewModel for PIN login screen
@@ -29,12 +32,16 @@ class PinLoginViewModel(
     val uiMode: StateFlow<UiMode> = deviceRepository.uiMode
 
     init {
+        Log.d(TAG, "Initializing PIN Login ViewModel")
+
         // Check device registration first
         if (!deviceRepository.isDeviceRegistered()) {
+            Log.d(TAG, "Device not registered")
             _viewState.value = _viewState.value.copy(
                 isDeviceRegistered = false
             )
         } else {
+            Log.d(TAG, "Device is registered")
             _viewState.value = _viewState.value.copy(
                 isDeviceRegistered = true
             )
@@ -42,6 +49,7 @@ class PinLoginViewModel(
             // Monitor auth state changes
             viewModelScope.launch {
                 authRepository.authState.collectLatest { state ->
+                    Log.d(TAG, "Auth state changed: $state")
                     when (state) {
                         is AuthState.Loading -> {
                             _viewState.value = _viewState.value.copy(
@@ -50,24 +58,42 @@ class PinLoginViewModel(
                             )
                         }
                         is AuthState.Success -> {
+                            Log.d(TAG, "Authentication successful: ${state.userData.id}")
                             _viewState.value = _viewState.value.copy(
                                 isLoading = false,
                                 isAuthenticated = true,
-                                userData = state.userData
+                                userData = state.userData,
+                                errorMessage = null
                             )
                         }
                         is AuthState.Error -> {
+                            Log.e(TAG, "Authentication error: ${state.message}")
                             _viewState.value = _viewState.value.copy(
                                 isLoading = false,
+                                isAuthenticated = false,
                                 errorMessage = state.message
                             )
                         }
-                        else -> {
+                        is AuthState.Initial -> {
                             // Initial state
+                            Log.d(TAG, "Initial auth state")
+                            _viewState.value = _viewState.value.copy(
+                                isLoading = false,
+                                isAuthenticated = false,
+                                errorMessage = null
+                            )
                         }
                     }
                 }
             }
+        }
+
+        // Check if already authenticated
+        if (authRepository.isAuthenticated()) {
+            Log.d(TAG, "User is already authenticated")
+            _viewState.value = _viewState.value.copy(
+                isAuthenticated = true
+            )
         }
     }
 
@@ -78,6 +104,7 @@ class PinLoginViewModel(
      * @param mode UI mode to use after authentication
      */
     fun authenticateWithPin(email: String, pin: String, mode: UiMode) {
+        Log.d(TAG, "Attempting authentication with email: $email, PIN length: ${pin.length}, mode: $mode")
         viewModelScope.launch {
             // Check if inputs are valid
             if (pin.length < 4) {
@@ -96,11 +123,45 @@ class PinLoginViewModel(
 
             // Update UI mode if different
             if (uiMode.value != mode) {
+                Log.d(TAG, "Updating UI mode to: $mode")
                 deviceRepository.updateUiMode(mode)
             }
 
-            // Authenticate user with email and PIN
-            authRepository.loginWithPin(email, pin)
+            // Set loading state
+            _viewState.value = _viewState.value.copy(
+                isLoading = true,
+                errorMessage = null
+            )
+
+            try {
+                // Authenticate user with email and PIN
+                val authState = authRepository.loginWithPin(email, pin)
+
+                // Check if authentication was successful
+                if (authState is AuthState.Success) {
+                    Log.d(TAG, "Login successful with state: $authState")
+                    _viewState.value = _viewState.value.copy(
+                        isLoading = false,
+                        isAuthenticated = true,
+                        userData = authState.userData,
+                        errorMessage = null
+                    )
+                } else if (authState is AuthState.Error) {
+                    Log.e(TAG, "Login failed: ${authState.message}")
+                    _viewState.value = _viewState.value.copy(
+                        isLoading = false,
+                        isAuthenticated = false,
+                        errorMessage = authState.message
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception during login", e)
+                _viewState.value = _viewState.value.copy(
+                    isLoading = false,
+                    isAuthenticated = false,
+                    errorMessage = e.message ?: "Unknown error occurred"
+                )
+            }
         }
     }
 
@@ -111,6 +172,21 @@ class PinLoginViewModel(
         _viewState.value = _viewState.value.copy(
             errorMessage = null
         )
+    }
+
+    /**
+     * Log out the user
+     */
+    fun logout() {
+        Log.d(TAG, "Logging out user")
+        viewModelScope.launch {
+            authRepository.logout()
+            _viewState.value = _viewState.value.copy(
+                isAuthenticated = false,
+                userData = null,
+                errorMessage = null
+            )
+        }
     }
 }
 

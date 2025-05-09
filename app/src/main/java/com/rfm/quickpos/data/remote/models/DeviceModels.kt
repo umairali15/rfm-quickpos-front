@@ -76,8 +76,7 @@ data class UserAuthRequest(
 data class UserAuthResponse(
     val success: Boolean,
     val token: String,
-    val user: UserData,
-    @SerializedName("company_schema") val companySchema: String
+    val user: UserData
 )
 
 /**
@@ -88,5 +87,22 @@ data class UserData(
     val fullName: String,
     val email: String?,
     val role: String,
+    val companyId: String? = null,
     val branches: List<String>? = null
+)
+
+/**
+ * JWT token payload structure
+ */
+data class JwtPayload(
+    val sub: String,  // User ID
+    val email: String,
+    val name: String,
+    val role: String,
+    val companyId: String,
+    val schemaName: String,
+    val businessType: String,
+    val branches: List<String>,
+    val iat: Long,  // Issued at timestamp
+    val exp: Long   // Expiration timestamp
 )

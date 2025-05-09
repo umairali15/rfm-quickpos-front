@@ -1,10 +1,7 @@
 package com.rfm.quickpos.presentation.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.DoNotDisturb
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
 import androidx.navigation.*
 import androidx.navigation.compose.*
@@ -40,10 +37,10 @@ fun UnifiedNavigation(
     startDestination: String = AuthScreen.PinLogin.route,
     uiMode: UiMode,
     onChangeMode: (UiMode) -> Unit,
-    onLoginSuccess: (() -> Unit)? = null,
+    onLoginSuccess: ((String) -> Unit)? = null,
+    onLogout: (() -> Unit)? = null,
     deviceRepository: DeviceRepository? = null,
     authRepository: AuthRepository
-
 ) {
     // Debug menu state
     var showDebugMenu by remember { mutableStateOf(false) }
@@ -79,12 +76,12 @@ fun UnifiedNavigation(
                         // Check if a shift is open, otherwise go to open shift screen
                         if (isShiftOpen) {
                             navigateToHomeScreen(navController, UiMode.CASHIER)
-                            onLoginSuccess?.invoke() // Call login success callback
+                            onLoginSuccess?.invoke("email_login") // Call login success callback with dummy id
                         } else {
                             navController.navigate(Screen.OpenShift.route) {
                                 popUpTo(0) { inclusive = true }
                             }
-                            onLoginSuccess?.invoke() // Call login success callback
+                            onLoginSuccess?.invoke("email_login") // Call login success callback with dummy id
                         }
                     }
                 },
@@ -95,15 +92,15 @@ fun UnifiedNavigation(
             )
         }
 
-
         composable(AuthScreen.PinLogin.route) {
             DualModePinLoginScreen(
                 onPinSubmit = { pin, mode ->
                     // Set UI mode based on PIN
                     onChangeMode(mode)
 
-                    // Signal login success
-                    onLoginSuccess?.invoke()
+                    // The user is now authenticated by the ViewModel
+                    // Get the user ID from the auth repository if available
+                    onLoginSuccess?.invoke("pin_login") // Call login success callback
                 },
                 onBackToEmailLogin = {
                     navController.navigate(AuthScreen.Login.route) {
@@ -214,10 +211,24 @@ fun UnifiedNavigation(
                         navController.navigate(Screen.Catalog.route)
                     },
                     onCustomersClicked = { /* Not implemented yet */ },
-                    onSettingsClicked = { showDebugMenu = true }, // Show debug on settings click
-                    userName = "Demo",
+                    onSettingsClicked = {
+                        // Show a dialog with settings and logout option
+                        showDebugMenu = true
+                    },
+                    userName = authRepository.authState.collectAsState().value.let {
+                        when (it) {
+                            is com.rfm.quickpos.data.repository.AuthState.Success ->
+                                it.userData.fullName
+                            else ->
+                                "User"
+                        }
+                    },
                     // Add shift-related action cards to the dashboard
-                    additionalActions = shiftActions
+                    additionalActions = shiftActions,
+                    // Add logout action
+                    onLogoutClick = {
+                        onLogout?.invoke()
+                    }
                 )
             } else {
                 // If somehow we get here in kiosk mode, redirect to attract screen

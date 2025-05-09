@@ -2,6 +2,7 @@
 
 package com.rfm.quickpos.presentation.features.auth
 
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -28,7 +29,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rfm.quickpos.R
@@ -36,6 +36,7 @@ import com.rfm.quickpos.domain.model.UiMode
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.QuickPOSApplication
 
+private const val TAG = "DualModePinLoginScreen"
 
 @Composable
 fun DualModePinLoginScreen(
@@ -60,8 +61,10 @@ fun DualModePinLoginScreen(
 
     // Handle authentication result
     LaunchedEffect(viewState.isAuthenticated) {
+        Log.d(TAG, "Authentication state changed: ${viewState.isAuthenticated}")
         if (viewState.isAuthenticated) {
             // Authentication successful, call the callback
+            Log.d(TAG, "Authentication successful, calling onPinSubmit")
             onPinSubmit("", uiMode) // We don't need to pass the actual PIN back
         }
     }
@@ -165,6 +168,13 @@ fun DualModePinLoginScreen(
                         )
                     }
                 }
+            }
+
+            // Loading indicator
+            if (viewState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.padding(16.dp)
+                )
             }
 
             // Email input field
@@ -350,17 +360,25 @@ fun DualModePinLoginScreen(
                                 showError = true
                             }
                         },
+                        enabled = !viewState.isLoading,
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(1f)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.primary)
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowForward,
-                            contentDescription = "Submit",
-                            tint = MaterialTheme.colorScheme.onPrimary
-                        )
+                        if (viewState.isLoading) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.ArrowForward,
+                                contentDescription = "Submit",
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
             }
@@ -493,17 +511,5 @@ private fun ModeButton(
                 color = contentColor
             )
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DualModePinLoginScreenPreview() {
-    RFMQuickPOSTheme {
-        DualModePinLoginScreen(
-            onPinSubmit = { _, _ -> },
-            onBackToEmailLogin = {},
-            onDevicePairing = {}
-        )
     }
 }

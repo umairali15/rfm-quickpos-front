@@ -7,7 +7,10 @@ import android.content.SharedPreferences
 import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.google.gson.Gson
 import com.rfm.quickpos.data.remote.models.DeviceData
+import com.rfm.quickpos.data.remote.models.JwtPayload
+import com.rfm.quickpos.data.remote.models.UserData
 import com.rfm.quickpos.domain.model.UiMode
 
 private const val TAG = "SecureCredentialStore"
@@ -28,6 +31,8 @@ class SecureCredentialStore(context: Context) {
         EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
         EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
     )
+
+    private val gson = Gson()
 
     // Device information
     fun saveDeviceInfo(deviceData: DeviceData) {
@@ -83,6 +88,51 @@ class SecureCredentialStore(context: Context) {
         preferences.edit()
             .putString(KEY_AUTH_TOKEN, token)
             .apply()
+        Log.d(TAG, "Auth token saved")
+
+        // Try to decode JWT payload and save essential information
+        try {
+            decodeAndSaveJwtInfo(token)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to decode JWT token", e)
+        }
+    }
+
+    /**
+     * Decode JWT token and save essential information
+     */
+    private fun decodeAndSaveJwtInfo(token: String) {
+        try {
+            val parts = token.split(".")
+            if (parts.size != 3) {
+                Log.e(TAG, "Invalid JWT token format")
+                return
+            }
+
+            // Base64 decode the payload
+            val payload = parts[1]
+            val decodedBytes = android.util.Base64.decode(
+                payload.replace("-", "+").replace("_", "/"),
+                android.util.Base64.DEFAULT
+            )
+            val decodedJson = String(decodedBytes)
+
+            // Parse payload JSON
+            val jwtPayload = gson.fromJson(decodedJson, JwtPayload::class.java)
+
+            // Save important information
+            val editor = preferences.edit()
+            editor.putString(KEY_COMPANY_SCHEMA, jwtPayload.schemaName)
+            editor.putString(KEY_COMPANY_ID, jwtPayload.companyId)
+            editor.putString(KEY_BUSINESS_TYPE, jwtPayload.businessType)
+            editor.apply()
+
+            Log.d(TAG, "JWT info decoded and saved: schema=${jwtPayload.schemaName}, " +
+                    "companyId=${jwtPayload.companyId}, businessType=${jwtPayload.businessType}")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error decoding JWT token", e)
+        }
     }
 
     fun getAuthToken(): String? {
@@ -93,12 +143,49 @@ class SecureCredentialStore(context: Context) {
         preferences.edit()
             .remove(KEY_AUTH_TOKEN)
             .apply()
+        Log.d(TAG, "Auth token cleared")
     }
 
-    fun saveCompanySchema(schema: String) {
+    fun saveCompanySchema(schema: String?) {
+        if (schema == null) {
+            Log.w(TAG, "Attempted to save null company schema")
+            return
+        }
+
         preferences.edit()
             .putString(KEY_COMPANY_SCHEMA, schema)
             .apply()
+        Log.d(TAG, "Company schema saved: $schema")
+    }
+
+    fun getBusinessType(): String? {
+        return preferences.getString(KEY_BUSINESS_TYPE, null)
+    }
+
+    // User Data
+    fun saveUserData(userData: UserData) {
+        val userJson = gson.toJson(userData)
+        preferences.edit()
+            .putString(KEY_USER_DATA, userJson)
+            .apply()
+        Log.d(TAG, "User data saved: ${userData.id}")
+    }
+
+    fun getUserData(): UserData? {
+        val userJson = preferences.getString(KEY_USER_DATA, null) ?: return null
+        return try {
+            gson.fromJson(userJson, UserData::class.java)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing user data", e)
+            null
+        }
+    }
+
+    fun clearUserData() {
+        preferences.edit()
+            .remove(KEY_USER_DATA)
+            .apply()
+        Log.d(TAG, "User data cleared")
     }
 
     // UI Mode
@@ -106,6 +193,7 @@ class SecureCredentialStore(context: Context) {
         preferences.edit()
             .putString(KEY_UI_MODE, mode.name)
             .apply()
+        Log.d(TAG, "UI mode saved: $mode")
     }
 
     fun getUiMode(): UiMode {
@@ -124,6 +212,7 @@ class SecureCredentialStore(context: Context) {
 
     fun clearAll() {
         preferences.edit().clear().apply()
+        Log.d(TAG, "All credentials cleared")
     }
 
     companion object {
@@ -140,5 +229,7 @@ class SecureCredentialStore(context: Context) {
         private const val KEY_IS_ACTIVE = "is_active"
         private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_UI_MODE = "ui_mode"
+        private const val KEY_USER_DATA = "user_data"
+        private const val KEY_BUSINESS_TYPE = "business_type"
     }
 }

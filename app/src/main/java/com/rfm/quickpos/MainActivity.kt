@@ -24,6 +24,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.rfm.quickpos.data.repository.AuthRepository
+import com.rfm.quickpos.data.repository.AuthState
 import com.rfm.quickpos.data.repository.DeviceRepository
 import com.rfm.quickpos.domain.manager.ConnectivityManager
 import com.rfm.quickpos.domain.model.UiMode
@@ -39,6 +40,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 private const val TAG = "MainActivity"
@@ -73,6 +75,35 @@ class MainActivity : ComponentActivity() {
 
         // Initialize app state
         initializeAppState()
+
+        // Monitor auth state changes
+        lifecycleScope.launch {
+            authRepository.authState.collectLatest { state ->
+                Log.d(TAG, "Auth state changed: $state")
+                when (state) {
+                    is AuthState.Success -> {
+                        // Check device registration
+                        if (!deviceRepository.isDeviceRegistered()) {
+                            Log.d(TAG, "User authenticated but device not registered")
+                            _appState.value = AppState.NeedsDeviceRegistration
+                        } else {
+                            Log.d(TAG, "User authenticated and device registered, moving to Ready")
+                            _appState.value = AppState.Ready
+                        }
+                    }
+                    is AuthState.Error -> {
+                        // If auth error and we're in Ready state, go back to NeedsAuthentication
+                        if (_appState.value == AppState.Ready) {
+                            Log.d(TAG, "Auth error, going back to login screen")
+                            _appState.value = AppState.NeedsAuthentication
+                        }
+                    }
+                    else -> {
+                        // Don't change app state for other auth states
+                    }
+                }
+            }
+        }
 
         setContent {
             RFMQuickPOSTheme {
@@ -150,8 +181,9 @@ class MainActivity : ComponentActivity() {
                                         deviceRepository.updateUiMode(newMode)
                                     }
                                 },
-                                onLoginSuccess = {
-                                    // When login is successful, check device registration
+                                onLoginSuccess = { userId ->
+                                    Log.d(TAG, "Login success callback: $userId")
+                                    // Check device registration
                                     lifecycleScope.launch {
                                         if (!deviceRepository.isDeviceRegistered()) {
                                             Log.d(TAG, "Login successful, but device needs registration")
@@ -160,6 +192,14 @@ class MainActivity : ComponentActivity() {
                                             Log.d(TAG, "Login successful, device already registered, moving to Ready")
                                             _appState.value = AppState.Ready
                                         }
+                                    }
+                                },
+                                onLogout = {
+                                    Log.d(TAG, "Logout requested")
+                                    // When user logs out, go back to auth screen
+                                    lifecycleScope.launch {
+                                        authRepository.logout()
+                                        _appState.value = AppState.NeedsAuthentication
                                     }
                                 },
                                 authRepository = authRepository,
@@ -194,6 +234,14 @@ class MainActivity : ComponentActivity() {
                                 onChangeMode = { newMode ->
                                     lifecycleScope.launch {
                                         deviceRepository.updateUiMode(newMode)
+                                    }
+                                },
+                                onLogout = {
+                                    Log.d(TAG, "Logout requested")
+                                    // When user logs out, go back to auth screen
+                                    lifecycleScope.launch {
+                                        authRepository.logout()
+                                        _appState.value = AppState.NeedsAuthentication
                                     }
                                 },
                                 authRepository = authRepository
