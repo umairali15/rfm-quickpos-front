@@ -20,26 +20,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rfm.quickpos.R
 import com.rfm.quickpos.domain.model.DevicePairingInfo
 import com.rfm.quickpos.domain.model.PairingStatus
-import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
-import com.rfm.quickpos.presentation.common.components.RfmOutlinedButton
-import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 
 /**
  * Screen for device pairing during first boot or manual setup
@@ -54,27 +48,7 @@ fun DevicePairingScreen(
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
-    val context = LocalContext.current
-
-    // Get device serial number if available
-    val deviceSerial = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            try {
-                Build.getSerial()
-            } catch (e: Exception) {
-                "Unknown Serial"
-            }
-        } else {
-            Build.SERIAL ?: "Unknown Serial"
-        }
-    }
-
-    // Update device serial if not already set
-    LaunchedEffect(deviceSerial) {
-        if (state.pairingInfo.deviceSerial.isEmpty()) {
-            onPairingInfoChange(state.pairingInfo.copy(deviceSerial = deviceSerial))
-        }
-    }
+    var showSerialEditor by remember { mutableStateOf(false) }
 
     // Background gradient
     val backgroundGradient = Brush.verticalGradient(
@@ -149,32 +123,98 @@ fun DevicePairingScreen(
 
                     Spacer(modifier = Modifier.height(24.dp))
 
-                    // Device Serial Field (Non-editable)
+                    // Device Serial Field (Editable by toggle)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Serial Number",
+                            style = MaterialTheme.typography.labelMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+
+                        Switch(
+                            checked = showSerialEditor,
+                            onCheckedChange = { showSerialEditor = it }
+                        )
+                    }
+
+                    if (showSerialEditor) {
+                        // Editable serial field
+                        OutlinedTextField(
+                            value = state.pairingInfo.deviceSerial,
+                            onValueChange = { newSerial ->
+                                onPairingInfoChange(state.pairingInfo.copy(deviceSerial = newSerial))
+                            },
+                            label = { Text("Custom Serial Number") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.PhoneAndroid,
+                                    contentDescription = null
+                                )
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    } else {
+                        // Non-editable serial display
+                        OutlinedTextField(
+                            value = state.pairingInfo.deviceSerial,
+                            onValueChange = { /* Read-only */ },
+                            label = { Text("Device Serial") },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.PhoneAndroid,
+                                    contentDescription = null
+                                )
+                            },
+                            readOnly = true,
+                            enabled = false,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Device Alias Field
                     OutlinedTextField(
-                        value = state.pairingInfo.deviceSerial,
-                        onValueChange = { /* Read-only */ },
-                        label = { Text("Device Serial") },
+                        value = state.pairingInfo.deviceAlias,
+                        onValueChange = {
+                            onPairingInfoChange(state.pairingInfo.copy(deviceAlias = it))
+                        },
+                        label = { Text("Device Alias (Required)") },
+                        placeholder = { Text("Enter Device Name") },
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Default.PhoneAndroid,
+                                imageVector = Icons.Default.DeviceHub,
                                 contentDescription = null
                             )
                         },
-                        readOnly = true,
-                        enabled = false,
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                        ),
+                        singleLine = true,
+                        isError = state.status == PairingStatus.ERROR && state.pairingInfo.deviceAlias.isBlank(),
+                        shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Merchant ID Field
+                    // Branch ID Field
                     OutlinedTextField(
-                        value = state.pairingInfo.merchantId,
+                        value = state.pairingInfo.branchId,
                         onValueChange = {
-                            onPairingInfoChange(state.pairingInfo.copy(merchantId = it))
+                            onPairingInfoChange(state.pairingInfo.copy(branchId = it))
                         },
-                        label = { Text("Merchant ID (MID)") },
-                        placeholder = { Text("Enter Merchant ID") },
+                        label = { Text("Branch ID (Required)") },
+                        placeholder = { Text("Enter Branch ID") },
                         leadingIcon = {
                             Icon(
                                 imageVector = Icons.Default.Business,
@@ -189,53 +229,23 @@ fun DevicePairingScreen(
                             onNext = { focusManager.moveFocus(FocusDirection.Down) }
                         ),
                         singleLine = true,
-                        isError = state.status == PairingStatus.ERROR && state.pairingInfo.merchantId.isBlank(),
+                        isError = state.status == PairingStatus.ERROR && state.pairingInfo.branchId.isBlank(),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Terminal ID Field
+                    // Device Model Field (Optional)
                     OutlinedTextField(
-                        value = state.pairingInfo.terminalId,
+                        value = state.pairingInfo.deviceModel.ifEmpty { Build.MODEL },
                         onValueChange = {
-                            onPairingInfoChange(state.pairingInfo.copy(terminalId = it))
+                            onPairingInfoChange(state.pairingInfo.copy(deviceModel = it))
                         },
-                        label = { Text("Terminal ID (TID)") },
-                        placeholder = { Text("Enter Terminal ID") },
+                        label = { Text("Device Model (Optional)") },
                         leadingIcon = {
                             Icon(
-                                imageVector = Icons.Default.Payment,
-                                contentDescription = null
-                            )
-                        },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Text,
-                            imeAction = ImeAction.Next
-                        ),
-                        keyboardActions = KeyboardActions(
-                            onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                        ),
-                        singleLine = true,
-                        isError = state.status == PairingStatus.ERROR && state.pairingInfo.terminalId.isBlank(),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Device Name Field (Optional)
-                    OutlinedTextField(
-                        value = state.pairingInfo.deviceName,
-                        onValueChange = {
-                            onPairingInfoChange(state.pairingInfo.copy(deviceName = it))
-                        },
-                        label = { Text("Device Name (Optional)") },
-                        placeholder = { Text("Enter a friendly name") },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Default.Label,
+                                imageVector = Icons.Default.Smartphone,
                                 contentDescription = null
                             )
                         },
@@ -275,13 +285,23 @@ fun DevicePairingScreen(
                     Spacer(modifier = Modifier.height(24.dp))
 
                     // Pair button
-                    RfmPrimaryButton(
-                        text = if (state.isLoading) "Pairing..." else "Register Device",
+                    Button(
                         onClick = onPairingSubmit,
                         enabled = isFormValid(state.pairingInfo) && !state.isLoading,
-                        fullWidth = true,
-                        leadingIcon = Icons.Default.AddToQueue
-                    )
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (state.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = if (state.isLoading) "Registering..." else "Register Device"
+                        )
+                    }
 
                     if (state.isLoading) {
                         Spacer(modifier = Modifier.height(16.dp))
@@ -293,11 +313,12 @@ fun DevicePairingScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             // Skip button (for development or pre-configured devices)
-            RfmOutlinedButton(
-                text = "Skip for Testing",
+            OutlinedButton(
                 onClick = onSkipSetup,
-                fullWidth = true
-            )
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Skip for Testing")
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -322,8 +343,7 @@ fun DevicePairingScreen(
                     Spacer(modifier = Modifier.width(12.dp))
 
                     Text(
-                        text = "Your MID and TID should be provided by your administrator. " +
-                                "Contact support if you don't have this information.",
+                        text = "All fields marked as required must be filled to register the device. Contact support if you don't have this information.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
@@ -337,25 +357,5 @@ fun DevicePairingScreen(
  * Check if the pairing form has valid input
  */
 private fun isFormValid(info: DevicePairingInfo): Boolean {
-    return info.merchantId.isNotBlank() && info.terminalId.isNotBlank()
-}
-
-@Preview(showBackground = true)
-@Composable
-fun DevicePairingScreenPreview() {
-    RFMQuickPOSTheme {
-        DevicePairingScreen(
-            state = DevicePairingState(
-                pairingInfo = DevicePairingInfo(
-                    deviceSerial = "ABCD1234EFGH5678",
-                    merchantId = "",
-                    terminalId = "",
-                    deviceName = ""
-                )
-            ),
-            onPairingInfoChange = {},
-            onPairingSubmit = {},
-            onSkipSetup = {}
-        )
-    }
+    return info.deviceAlias.isNotBlank() && info.branchId.isNotBlank() && info.deviceSerial.isNotBlank()
 }

@@ -165,11 +165,17 @@ class MainActivity : ComponentActivity() {
                                             }
                                         },
                                         onLoginSuccess = {
-                                            // When login is successful, transition to appropriate state
-                                            if (deviceRepository.isDeviceRegistered()) {
-                                                _appState.value = AppState.Ready
-                                            } else {
-                                                _appState.value = AppState.NeedsDeviceRegistration
+                                            // FIXED: Check if device is registered and transition appropriately
+                                            lifecycleScope.launch {
+                                                // Force a re-check after login
+                                                val isRegistered = deviceRepository.isDeviceRegistered()
+                                                if (!isRegistered) {
+                                                    // If not registered, transition to device registration screen
+                                                    _appState.value = AppState.NeedsDeviceRegistration
+                                                } else {
+                                                    // If already registered, continue to main app
+                                                    _appState.value = AppState.Ready
+                                                }
                                             }
                                         },
                                         deviceRepository = deviceRepository // Pass the repository
@@ -226,10 +232,17 @@ class MainActivity : ComponentActivity() {
             // Simulate splash screen delay
             delay(1500)
 
-            // First step should be authentication
-            _appState.value = AppState.NeedsAuthentication
-
-
+            // First check if the device is registered
+            if (!deviceRepository.isDeviceRegistered()) {
+                // If device is not registered, we need to register it first
+                _appState.value = AppState.NeedsDeviceRegistration
+            } else if (!authRepository.isAuthenticated()) {
+                // If device is registered but not authenticated, go to auth
+                _appState.value = AppState.NeedsAuthentication
+            } else {
+                // If both registered and authenticated, go to main app
+                _appState.value = AppState.Ready
+            }
         }
     }
 
@@ -275,13 +288,11 @@ sealed class AppState {
     // App is initializing (splash screen)
     object Initializing : AppState()
 
-
     // User needs to log in (cashier mode only)
     object NeedsAuthentication : AppState()
 
     // Device needs to be registered with the backend
     object NeedsDeviceRegistration : AppState()
-
 
     // All set up and ready to use the app
     object Ready : AppState()

@@ -11,7 +11,7 @@ data class DeviceRegistrationRequest(
     val alias: String,
     val serialNumber: String,
     val model: String,
-    val branchId: String? = null,
+    val branchId: String,
     val appVersion: String
 )
 
@@ -20,8 +20,9 @@ data class DeviceRegistrationRequest(
  */
 data class DeviceRegistrationResponse(
     val success: Boolean,
-    val data: DeviceData,
-    val token: String
+    val data: DeviceData? = null,
+    val token: String? = null,
+    val error: String? = null
 )
 
 /**

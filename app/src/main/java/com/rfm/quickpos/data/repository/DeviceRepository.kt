@@ -32,7 +32,11 @@ class DeviceRepository(
      * Check if device is already registered
      */
     fun isDeviceRegistered(): Boolean {
-        return credentialStore.isDeviceRegistered()
+        val deviceId = credentialStore.getDeviceId()
+        val serialNumber = credentialStore.getSerialNumber()
+        val companySchema = credentialStore.getCompanySchema()
+
+        return deviceId != null && serialNumber != null && companySchema != null
     }
 
     /**
@@ -61,9 +65,20 @@ class DeviceRepository(
     }
 
     /**
-     * Register a new device with the server
+     * Save custom serial number
      */
-    suspend fun registerDevice(pairingCode: String): DeviceRegistrationState {
+    fun saveSerialNumber(serialNumber: String) {
+        if (serialNumber.isNotBlank()) {
+            credentialStore.saveSerialNumber(serialNumber)
+        }
+    }
+
+    // Replace the registerDevice method with this version
+    suspend fun registerDevice(
+        deviceAlias: String,
+        branchId: String,
+        serialNumber: String? = null
+    ): DeviceRegistrationState {
         _deviceRegistrationState.value = DeviceRegistrationState.Loading
 
         // The auth token should already be available from prior user login
@@ -72,22 +87,42 @@ class DeviceRepository(
             return DeviceRegistrationState.Error("Authentication required before device registration")
         }
 
+        // Validate required fields
+        if (deviceAlias.isBlank()) {
+            return DeviceRegistrationState.Error("Device alias is required")
+        }
+
+        if (branchId.isBlank()) {
+            return DeviceRegistrationState.Error("Branch ID is required")
+        }
+
+        // Use provided serial number or get from device, but make sure it's not "unknown"
+        var deviceSerialNumber = serialNumber?.takeIf { it.isNotBlank() } ?: getDeviceSerialNumber()
+
+        // Ensure we never send "unknown" as a serial number
+        if (deviceSerialNumber.equals("unknown", ignoreCase = true)) {
+            // Generate something more unique
+            deviceSerialNumber = "android_${Build.BRAND}_${Build.PRODUCT}_${System.currentTimeMillis()}"
+        }
+
         return try {
-            // For registration, we use the pairing code as the alias
-            // You may want to add a proper alias input field in your UI
             val request = DeviceRegistrationRequest(
-                alias = pairingCode,
-                serialNumber = getDeviceSerialNumber(),
+                alias = deviceAlias,
+                serialNumber = deviceSerialNumber,
                 model = Build.MODEL,
+                branchId = branchId,
                 appVersion = BuildConfig.VERSION_NAME
             )
 
             val response = apiService.registerDevice(request)
 
-            if (response.success) {
+            if (response.success && response.data != null && response.token != null) {
                 // Save device info and token
                 credentialStore.saveDeviceInfo(response.data)
                 credentialStore.saveAuthToken(response.token)
+
+                // Save the serial number we used
+                credentialStore.saveSerialNumber(deviceSerialNumber)
 
                 // Update UI mode from response
                 val newMode = response.data.uiMode?.let {
@@ -102,13 +137,12 @@ class DeviceRepository(
 
                 DeviceRegistrationState.Success(response.data.id)
             } else {
-                DeviceRegistrationState.Error("Registration failed")
+                DeviceRegistrationState.Error(response.error ?: "Registration failed: Backend timestamp format issue. Please contact support.")
             }
         } catch (e: Exception) {
             DeviceRegistrationState.Error(e.message ?: "Unknown error")
         }
     }
-
     /**
      * Authenticate a previously registered device
      */

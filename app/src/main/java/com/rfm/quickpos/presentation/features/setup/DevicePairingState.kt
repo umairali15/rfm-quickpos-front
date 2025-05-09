@@ -10,5 +10,6 @@ data class DevicePairingState(
     val status: PairingStatus = PairingStatus.INITIAL,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val isPaired: Boolean = false
+    val isPaired: Boolean = false,
+    val serializableSerialNumber: Boolean = false
 )

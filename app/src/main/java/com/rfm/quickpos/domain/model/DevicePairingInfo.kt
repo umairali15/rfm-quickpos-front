@@ -4,9 +4,9 @@ package com.rfm.quickpos.domain.model
 
 data class DevicePairingInfo(
     val deviceSerial: String = "",
-    val merchantId: String = "",  // MID
-    val terminalId: String = "",  // TID
-    val deviceName: String = ""
+    val deviceAlias: String = "",
+    val branchId: String = "",
+    val deviceModel: String = ""
 )
 
 enum class PairingStatus {

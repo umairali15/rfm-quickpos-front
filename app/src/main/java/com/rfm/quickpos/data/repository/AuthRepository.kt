@@ -41,7 +41,7 @@ class AuthRepository(
                 credentialStore.saveCompanySchema(response.companySchema)
 
                 // Update state
-                val newState = AuthState.Success(response.user)
+                val newState = AuthState.Success(response.user, response.companySchema)
                 _authState.value = newState
                 return newState
             } else {
@@ -78,6 +78,6 @@ class AuthRepository(
 sealed class AuthState {
     object Initial : AuthState()
     object Loading : AuthState()
-    data class Success(val userData: UserData) : AuthState()
+    data class Success(val userData: UserData, val companySchema: String) : AuthState()
     data class Error(val message: String) : AuthState()
 }

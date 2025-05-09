@@ -101,22 +101,6 @@ fun UnifiedNavigation(
                     // Set UI mode based on PIN
                     onChangeMode(mode)
 
-                    // After successful login, check if device is registered
-                    if (deviceRepository?.isDeviceRegistered() == false) {
-                        // Go to device registration
-                        navController.navigate(Screen.DevicePairing.route)
-                    } else if (mode == UiMode.CASHIER) {
-                        // Regular cashier flow
-                        if (isShiftOpen) {
-                            navigateToHomeScreen(navController, mode)
-                        } else {
-                            navController.navigate(Screen.OpenShift.route)
-                        }
-                    } else {
-                        // Kiosk mode
-                        navigateToHomeScreen(navController, mode)
-                    }
-
                     // Signal login success
                     onLoginSuccess?.invoke()
                 },
@@ -131,7 +115,6 @@ fun UnifiedNavigation(
             )
         }
 
-        // ===== DEVICE PAIRING =====
         composable(Screen.DevicePairing.route) {
             var pairingState by remember {
                 mutableStateOf(
@@ -158,8 +141,9 @@ fun UnifiedNavigation(
                     // Simulate network request
                     android.os.Handler().postDelayed({
                         // Check if required fields are filled (this would be a real API call)
-                        if (pairingState.pairingInfo.merchantId.isNotBlank() &&
-                            pairingState.pairingInfo.terminalId.isNotBlank()) {
+                        // UPDATE THIS PART - use deviceAlias and branchId instead of merchantId and terminalId
+                        if (pairingState.pairingInfo.deviceAlias.isNotBlank() &&
+                            pairingState.pairingInfo.branchId.isNotBlank()) {
 
                             // Success - navigate to login
                             pairingState = pairingState.copy(
