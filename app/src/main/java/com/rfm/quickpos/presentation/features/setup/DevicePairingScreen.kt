@@ -3,6 +3,7 @@
 package com.rfm.quickpos.presentation.features.setup
 
 import android.os.Build
+import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -35,6 +36,8 @@ import com.rfm.quickpos.R
 import com.rfm.quickpos.domain.model.DevicePairingInfo
 import com.rfm.quickpos.domain.model.PairingStatus
 
+private const val TAG = "DevicePairingScreen"
+
 /**
  * Screen for device pairing during first boot or manual setup
  */
@@ -49,6 +52,19 @@ fun DevicePairingScreen(
 ) {
     val focusManager = LocalFocusManager.current
     var showSerialEditor by remember { mutableStateOf(false) }
+
+    // Log state changes
+    LaunchedEffect(state.status, state.isPaired) {
+        Log.d(TAG, "Pairing state updated: ${state.status}, isPaired: ${state.isPaired}")
+
+        if (state.isPaired) {
+            Log.d(TAG, "Device pairing successful, should navigate to next screen")
+        }
+
+        if (state.status == PairingStatus.ERROR) {
+            Log.e(TAG, "Device pairing error: ${state.errorMessage}")
+        }
+    }
 
     // Background gradient
     val backgroundGradient = Brush.verticalGradient(
@@ -286,7 +302,10 @@ fun DevicePairingScreen(
 
                     // Pair button
                     Button(
-                        onClick = onPairingSubmit,
+                        onClick = {
+                            Log.d(TAG, "Attempting to pair device: ${state.pairingInfo}")
+                            onPairingSubmit()
+                        },
                         enabled = isFormValid(state.pairingInfo) && !state.isLoading,
                         modifier = Modifier.fillMaxWidth()
                     ) {

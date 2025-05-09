@@ -20,7 +20,8 @@ data class DeviceRegistrationRequest(
  */
 data class DeviceRegistrationResponse(
     val success: Boolean,
-    val data: DeviceData? = null,
+    val message: String? = null,
+    val device: DeviceData? = null,
     val token: String? = null,
     val error: String? = null
 )
@@ -48,12 +49,17 @@ data class DeviceAuthResponse(
 data class DeviceData(
     val id: String,
     val alias: String,
-    @SerializedName("branch_id") val branchId: String?,
-    @SerializedName("company_id") val companyId: String,
-    @SerializedName("company_schema") val companySchema: String,
-    @SerializedName("table_id") val tableId: String?,
-    @SerializedName("is_active") val isActive: Boolean,
-    @SerializedName("ui_mode") val uiMode: String?
+    @SerializedName("branch_id") val branchId: String? = null,
+    @SerializedName("company_id") val companyId: String? = null,
+    @SerializedName("company_schema") val companySchema: String? = null,
+    @SerializedName("table_id") val tableId: String? = null,
+    @SerializedName("is_active") val isActive: Boolean = true,
+    @SerializedName("ui_mode") val uiMode: String? = null,
+
+    // Additional fields from response
+    val serialNumber: String? = null,
+    val model: String? = null,
+    val appVersion: String? = null
 )
 
 /**

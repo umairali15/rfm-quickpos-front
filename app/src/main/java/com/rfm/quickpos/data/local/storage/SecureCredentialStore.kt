@@ -4,10 +4,13 @@ package com.rfm.quickpos.data.local.storage
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.rfm.quickpos.data.remote.models.DeviceData
 import com.rfm.quickpos.domain.model.UiMode
+
+private const val TAG = "SecureCredentialStore"
 
 /**
  * Secure store for credentials and device information
@@ -28,24 +31,32 @@ class SecureCredentialStore(context: Context) {
 
     // Device information
     fun saveDeviceInfo(deviceData: DeviceData) {
-        preferences.edit()
-            .putString(KEY_DEVICE_ID, deviceData.id)
-            .putString(KEY_DEVICE_ALIAS, deviceData.alias)
-            .putString(KEY_BRANCH_ID, deviceData.branchId)
-            .putString(KEY_COMPANY_ID, deviceData.companyId)
-            .putString(KEY_COMPANY_SCHEMA, deviceData.companySchema)
-            .putString(KEY_TABLE_ID, deviceData.tableId)
-            .putBoolean(KEY_IS_ACTIVE, deviceData.isActive)
-            .apply()
+        Log.d(TAG, "Saving device info: $deviceData")
+
+        val editor = preferences.edit()
+
+        // Save essential device information
+        editor.putString(KEY_DEVICE_ID, deviceData.id)
+        editor.putString(KEY_DEVICE_ALIAS, deviceData.alias)
+
+        // Save optional device information
+        deviceData.branchId?.let { editor.putString(KEY_BRANCH_ID, it) }
+        deviceData.companyId?.let { editor.putString(KEY_COMPANY_ID, it) }
+        deviceData.companySchema?.let { editor.putString(KEY_COMPANY_SCHEMA, it) }
+        deviceData.tableId?.let { editor.putString(KEY_TABLE_ID, it) }
+        editor.putBoolean(KEY_IS_ACTIVE, deviceData.isActive)
+
+        // Apply changes
+        editor.apply()
 
         // Convert UI mode string to enum (if available)
         deviceData.uiMode?.let {
             val uiMode = try {
                 UiMode.valueOf(it.uppercase())
             } catch (e: IllegalArgumentException) {
-                null
+                UiMode.CASHIER // Default to CASHIER if invalid
             }
-            uiMode?.let { mode -> saveUiMode(mode) }
+            saveUiMode(uiMode)
         }
     }
 
@@ -83,7 +94,7 @@ class SecureCredentialStore(context: Context) {
             .remove(KEY_AUTH_TOKEN)
             .apply()
     }
-    // Add this method if not already present
+
     fun saveCompanySchema(schema: String) {
         preferences.edit()
             .putString(KEY_COMPANY_SCHEMA, schema)

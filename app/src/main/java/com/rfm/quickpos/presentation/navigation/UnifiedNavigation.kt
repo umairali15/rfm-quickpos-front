@@ -6,9 +6,9 @@ import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.DoNotDisturb
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
 import androidx.navigation.*
 import androidx.navigation.compose.*
+import com.rfm.quickpos.data.repository.AuthRepository
 import com.rfm.quickpos.data.repository.DeviceRepository
 import com.rfm.quickpos.domain.model.DevicePairingInfo
 import com.rfm.quickpos.domain.model.PairingStatus
@@ -41,7 +41,8 @@ fun UnifiedNavigation(
     uiMode: UiMode,
     onChangeMode: (UiMode) -> Unit,
     onLoginSuccess: (() -> Unit)? = null,
-    deviceRepository: DeviceRepository? = null
+    deviceRepository: DeviceRepository? = null,
+    authRepository: AuthRepository
 
 ) {
     // Debug menu state

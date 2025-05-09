@@ -3,6 +3,7 @@
 package com.rfm.quickpos
 
 import android.os.Bundle
+import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,8 +39,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+private const val TAG = "MainActivity"
 
 class MainActivity : ComponentActivity() {
     // Repositories
@@ -73,152 +75,169 @@ class MainActivity : ComponentActivity() {
         initializeAppState()
 
         setContent {
-            // Get current UI mode
-            val uiMode by deviceRepository.uiMode.collectAsState()
-
-            // Get connectivity status
-            val connectivityStatus by connectivityManager.connectionStatus.collectAsState()
-
-            // Get pending sync count
-            val pendingSyncCount by connectivityManager.pendingSyncCount.collectAsState()
-
-            // Get current app state
-            val currentAppState by appState.collectAsState()
-
-            // Apply system UI changes based on mode
-            ApplySystemUIChanges(uiMode)
-
             RFMQuickPOSTheme {
-                // Provide feature flags based on UI mode
-                FeatureFlagProvider(uiMode = uiMode) {
-                    // A surface container using the 'background' color from the theme
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
-                    ) {
-                        when (currentAppState) {
-                            AppState.Initializing -> {
-                                // Show splash screen during initialization
-                                SplashScreen(
-                                    onInitializationComplete = { /* Controlled by state machine */ }
-                                )
-                            }
-                            AppState.NeedsDeviceRegistration -> {
-                                // Create device pairing view model
-                                val viewModel = remember {
-                                    DevicePairingViewModel(deviceRepository)
-                                }
+                MainScreen()
+            }
+        }
+    }
 
-                                // Show device pairing screen
-                                DevicePairingScreen(
-                                    state = viewModel.state.collectAsState().value,
-                                    onPairingInfoChange = { viewModel.updatePairingInfo(it) },
-                                    onPairingSubmit = {
-                                        viewModel.submitPairing()
-                                    },
-                                    onSkipSetup = {
-                                        // For development, allow skipping
-                                        _appState.value = AppState.Ready
+    /**
+     * Main screen composable that handles the app's flow based on state
+     */
+    @Composable
+    fun MainScreen() {
+        // Get current UI mode
+        val uiMode by deviceRepository.uiMode.collectAsState()
+
+        // Get connectivity status
+        val connectivityStatus by connectivityManager.connectionStatus.collectAsState()
+
+        // Get pending sync count
+        val pendingSyncCount by connectivityManager.pendingSyncCount.collectAsState()
+
+        // Get current app state
+        val currentAppState by appState.collectAsState()
+
+        // Apply system UI changes based on mode
+        ApplySystemUIChanges(uiMode)
+
+        // Log state changes for debugging
+        LaunchedEffect(currentAppState) {
+            Log.d(TAG, "App state changed to: $currentAppState")
+        }
+
+        // Provide feature flags based on UI mode
+        FeatureFlagProvider(uiMode = uiMode) {
+            // A surface container using the 'background' color from the theme
+            Surface(
+                modifier = Modifier.fillMaxSize(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                when (currentAppState) {
+                    AppState.Initializing -> {
+                        // Show splash screen during initialization
+                        SplashScreen(
+                            onInitializationComplete = { /* Controlled by state machine */ }
+                        )
+                    }
+                    AppState.NeedsDeviceRegistration -> {
+                        DevicePairingScreenWithNavigation()
+                    }
+                    AppState.NeedsAuthentication -> {
+                        // Main app content with connectivity banner and PIN login
+                        Column {
+                            // Global connectivity banner
+                            ConnectivityBanner(
+                                status = connectivityStatus,
+                                pendingSyncCount = pendingSyncCount,
+                                onRetryClick = {
+                                    lifecycleScope.launch {
+                                        connectivityManager.retryPendingSync()
                                     }
-                                )
+                                }
+                            )
 
-                                // Observe device registration success
-                                LaunchedEffect(viewModel.state) {
-                                    val state = viewModel.state.first()
-                                    if (state.isPaired) {
-                                        // If device is paired, move to ready state
-                                        if (uiMode == UiMode.KIOSK) {
-                                            // Kiosk mode doesn't need user login
-                                            _appState.value = AppState.Ready
+                            // Create the navigation controller
+                            val navController = rememberNavController()
+
+                            // Use UnifiedNavigation with PIN login as the start
+                            UnifiedNavigation(
+                                navController = navController,
+                                startDestination = AuthScreen.PinLogin.route,
+                                uiMode = uiMode,
+                                onChangeMode = { newMode ->
+                                    lifecycleScope.launch {
+                                        deviceRepository.updateUiMode(newMode)
+                                    }
+                                },
+                                onLoginSuccess = {
+                                    // When login is successful, check device registration
+                                    lifecycleScope.launch {
+                                        if (!deviceRepository.isDeviceRegistered()) {
+                                            Log.d(TAG, "Login successful, but device needs registration")
+                                            _appState.value = AppState.NeedsDeviceRegistration
                                         } else {
-                                            // Cashier mode needs user login
-                                            _appState.value = AppState.NeedsAuthentication
+                                            Log.d(TAG, "Login successful, device already registered, moving to Ready")
+                                            _appState.value = AppState.Ready
                                         }
                                     }
+                                },
+                                authRepository = authRepository,
+                                deviceRepository = deviceRepository
+                            )
+                        }
+                    }
+                    AppState.Ready -> {
+                        // Main app content with connectivity banner
+                        Column {
+                            // Global connectivity banner
+                            ConnectivityBanner(
+                                status = connectivityStatus,
+                                pendingSyncCount = pendingSyncCount,
+                                onRetryClick = {
+                                    lifecycleScope.launch {
+                                        connectivityManager.retryPendingSync()
+                                    }
                                 }
-                            }
-                            AppState.NeedsAuthentication -> {
-                                // Main app content with connectivity banner and PIN login
-                                Column {
-                                    // Global connectivity banner
-                                    ConnectivityBanner(
-                                        status = connectivityStatus,
-                                        pendingSyncCount = pendingSyncCount,
-                                        onRetryClick = {
-                                            lifecycleScope.launch {
-                                                connectivityManager.retryPendingSync()
-                                            }
-                                        }
-                                    )
+                            )
 
-                                    // Create the navigation controller
-                                    val navController = rememberNavController()
+                            // Create the navigation controller
+                            val navController = rememberNavController()
 
-                                    // Use UnifiedNavigation with PIN login as the start
-                                    UnifiedNavigation(
-                                        navController = navController,
-                                        startDestination = AuthScreen.PinLogin.route,
-                                        uiMode = uiMode,
-                                        onChangeMode = { newMode ->
-                                            lifecycleScope.launch {
-                                                deviceRepository.updateUiMode(newMode)
-                                            }
-                                        },
-                                        onLoginSuccess = {
-                                            // FIXED: Check if device is registered and transition appropriately
-                                            lifecycleScope.launch {
-                                                // Force a re-check after login
-                                                val isRegistered = deviceRepository.isDeviceRegistered()
-                                                if (!isRegistered) {
-                                                    // If not registered, transition to device registration screen
-                                                    _appState.value = AppState.NeedsDeviceRegistration
-                                                } else {
-                                                    // If already registered, continue to main app
-                                                    _appState.value = AppState.Ready
-                                                }
-                                            }
-                                        },
-                                        deviceRepository = deviceRepository // Pass the repository
-                                    )
-                                }
-                            }
-                            AppState.Ready -> {
-                                // Main app content with connectivity banner
-                                Column {
-                                    // Global connectivity banner
-                                    ConnectivityBanner(
-                                        status = connectivityStatus,
-                                        pendingSyncCount = pendingSyncCount,
-                                        onRetryClick = {
-                                            lifecycleScope.launch {
-                                                connectivityManager.retryPendingSync()
-                                            }
-                                        }
-                                    )
-
-                                    // Create the navigation controller
-                                    val navController = rememberNavController()
-
-                                    // Use UnifiedNavigation with the appropriate start destination
-                                    UnifiedNavigation(
-                                        navController = navController,
-                                        // Skip to the home screen since we're already authenticated
-                                        startDestination = if (uiMode == UiMode.CASHIER)
-                                            "dashboard" else "kiosk_attract",
-                                        uiMode = uiMode,
-                                        onChangeMode = { newMode ->
-                                            lifecycleScope.launch {
-                                                deviceRepository.updateUiMode(newMode)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
+                            // Use UnifiedNavigation with the appropriate start destination
+                            UnifiedNavigation(
+                                navController = navController,
+                                // Skip to the home screen since we're already authenticated
+                                startDestination = if (uiMode == UiMode.CASHIER)
+                                    "dashboard" else "kiosk_attract",
+                                uiMode = uiMode,
+                                onChangeMode = { newMode ->
+                                    lifecycleScope.launch {
+                                        deviceRepository.updateUiMode(newMode)
+                                    }
+                                },
+                                authRepository = authRepository
+                            )
                         }
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Wraps the DevicePairingScreen composable with proper state handling
+     */
+    @Composable
+    private fun DevicePairingScreenWithNavigation() {
+        // Create the view model
+        val viewModel = remember { DevicePairingViewModel(deviceRepository) }
+
+        // Collect state
+        val state by viewModel.state.collectAsState()
+
+        // Handle navigation based on pairing state
+        LaunchedEffect(state.isPaired) {
+            if (state.isPaired) {
+                Log.d(TAG, "Device pairing successful - transitioning to Ready state")
+                // After device registration, go directly to Ready state
+                _appState.value = AppState.Ready
+            }
+        }
+
+        // Render the pairing screen
+        DevicePairingScreen(
+            state = state,
+            onPairingInfoChange = { viewModel.updatePairingInfo(it) },
+            onPairingSubmit = { viewModel.submitPairing() },
+            onSkipSetup = {
+                // For development, allow skipping
+                lifecycleScope.launch {
+                    _appState.value = AppState.Ready
+                    Log.d(TAG, "Skipping setup, moving to Ready state")
+                }
+            }
+        )
     }
 
     /**
@@ -232,15 +251,19 @@ class MainActivity : ComponentActivity() {
             // Simulate splash screen delay
             delay(1500)
 
-            // First check if the device is registered
-            if (!deviceRepository.isDeviceRegistered()) {
-                // If device is not registered, we need to register it first
-                _appState.value = AppState.NeedsDeviceRegistration
-            } else if (!authRepository.isAuthenticated()) {
-                // If device is registered but not authenticated, go to auth
+            // First check if the user is authenticated
+            if (!authRepository.isAuthenticated()) {
+                Log.d(TAG, "User not authenticated, need login")
                 _appState.value = AppState.NeedsAuthentication
-            } else {
-                // If both registered and authenticated, go to main app
+            }
+            // If authenticated, check device registration
+            else if (!deviceRepository.isDeviceRegistered()) {
+                Log.d(TAG, "User authenticated but device not registered, need registration")
+                _appState.value = AppState.NeedsDeviceRegistration
+            }
+            // Both authenticated and registered, go to main app
+            else {
+                Log.d(TAG, "User authenticated and device registered, ready to start")
                 _appState.value = AppState.Ready
             }
         }
@@ -251,26 +274,28 @@ class MainActivity : ComponentActivity() {
      */
     @Composable
     private fun ApplySystemUIChanges(uiMode: UiMode) {
-        if (uiMode == UiMode.KIOSK) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            WindowCompat.setDecorFitsSystemWindows(window, false)
-            WindowCompat.getInsetsController(window, window.decorView).apply {
-                isAppearanceLightStatusBars = false
-                isAppearanceLightNavigationBars = false
-                hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-                systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            WindowCompat.setDecorFitsSystemWindows(window, true)
-            try {
-                stopLockTask()
-            } catch (e: Exception) {
-                // Not in lock task mode, ignore
-            }
-            WindowCompat.getInsetsController(window, window.decorView).apply {
-                show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
-                systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+        LaunchedEffect(uiMode) {
+            if (uiMode == UiMode.KIOSK) {
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                WindowCompat.setDecorFitsSystemWindows(window, false)
+                WindowCompat.getInsetsController(window, window.decorView).apply {
+                    isAppearanceLightStatusBars = false
+                    isAppearanceLightNavigationBars = false
+                    hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                    systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                }
+            } else {
+                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                WindowCompat.setDecorFitsSystemWindows(window, true)
+                try {
+                    stopLockTask()
+                } catch (e: Exception) {
+                    // Not in lock task mode, ignore
+                }
+                WindowCompat.getInsetsController(window, window.decorView).apply {
+                    show(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                    systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
+                }
             }
         }
     }
@@ -296,4 +321,13 @@ sealed class AppState {
 
     // All set up and ready to use the app
     object Ready : AppState()
+
+    override fun toString(): String {
+        return when(this) {
+            is Initializing -> "Initializing"
+            is NeedsAuthentication -> "NeedsAuthentication"
+            is NeedsDeviceRegistration -> "NeedsDeviceRegistration"
+            is Ready -> "Ready"
+        }
+    }
 }

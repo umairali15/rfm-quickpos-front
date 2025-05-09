@@ -4,15 +4,19 @@ package com.rfm.quickpos.data.repository
 
 import android.content.Context
 import android.os.Build
+import android.util.Log
 import com.rfm.quickpos.BuildConfig
 import com.rfm.quickpos.data.local.storage.SecureCredentialStore
 import com.rfm.quickpos.data.remote.api.ApiService
 import com.rfm.quickpos.data.remote.models.DeviceAuthRequest
+import com.rfm.quickpos.data.remote.models.DeviceData
 import com.rfm.quickpos.data.remote.models.DeviceRegistrationRequest
 import com.rfm.quickpos.domain.model.UiMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+
+private const val TAG = "DeviceRepository"
 
 /**
  * Repository for device management operations
@@ -34,9 +38,7 @@ class DeviceRepository(
     fun isDeviceRegistered(): Boolean {
         val deviceId = credentialStore.getDeviceId()
         val serialNumber = credentialStore.getSerialNumber()
-        val companySchema = credentialStore.getCompanySchema()
-
-        return deviceId != null && serialNumber != null && companySchema != null
+        return deviceId != null && serialNumber != null
     }
 
     /**
@@ -48,20 +50,12 @@ class DeviceRepository(
             return savedSerial
         }
 
-        // Get device serial or generate a unique ID
-        val serial = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            try {
-                Build.getSerial()
-            } catch (e: Exception) {
-                Build.SERIAL ?: Build.FINGERPRINT
-            }
-        } else {
-            Build.SERIAL ?: Build.FINGERPRINT
-        }
+        // Generate a unique device identifier
+        val uniqueSerial = "android_${Build.BRAND}_${Build.PRODUCT}_${System.currentTimeMillis()}"
 
         // Save and return serial
-        credentialStore.saveSerialNumber(serial)
-        return serial
+        credentialStore.saveSerialNumber(uniqueSerial)
+        return uniqueSerial
     }
 
     /**
@@ -73,37 +67,24 @@ class DeviceRepository(
         }
     }
 
-    // Replace the registerDevice method with this version
-    suspend fun registerDevice(
-        deviceAlias: String,
-        branchId: String,
-        serialNumber: String? = null
-    ): DeviceRegistrationState {
+    /**
+     * Register device with the server
+     */
+    suspend fun registerDevice(branchId: String): DeviceRegistrationState {
         _deviceRegistrationState.value = DeviceRegistrationState.Loading
 
-        // The auth token should already be available from prior user login
-        val authToken = credentialStore.getAuthToken()
-        if (authToken == null) {
-            return DeviceRegistrationState.Error("Authentication required before device registration")
-        }
-
-        // Validate required fields
-        if (deviceAlias.isBlank()) {
-            return DeviceRegistrationState.Error("Device alias is required")
-        }
-
+        // Validate branch ID
         if (branchId.isBlank()) {
-            return DeviceRegistrationState.Error("Branch ID is required")
+            val error = DeviceRegistrationState.Error("Branch ID is required")
+            _deviceRegistrationState.value = error
+            return error
         }
 
-        // Use provided serial number or get from device, but make sure it's not "unknown"
-        var deviceSerialNumber = serialNumber?.takeIf { it.isNotBlank() } ?: getDeviceSerialNumber()
+        // Get device serial number
+        val deviceSerialNumber = getDeviceSerialNumber()
 
-        // Ensure we never send "unknown" as a serial number
-        if (deviceSerialNumber.equals("unknown", ignoreCase = true)) {
-            // Generate something more unique
-            deviceSerialNumber = "android_${Build.BRAND}_${Build.PRODUCT}_${System.currentTimeMillis()}"
-        }
+        // Generate device alias based on model name
+        val deviceAlias = "Device-${Build.MODEL.take(8)}-${System.currentTimeMillis() % 10000}"
 
         return try {
             val request = DeviceRegistrationRequest(
@@ -114,18 +95,38 @@ class DeviceRepository(
                 appVersion = BuildConfig.VERSION_NAME
             )
 
+            Log.d(TAG, "Registering device with branch ID: $branchId, serial: $deviceSerialNumber")
             val response = apiService.registerDevice(request)
+            Log.d(TAG, "Registration response: $response")
 
-            if (response.success && response.data != null && response.token != null) {
-                // Save device info and token
-                credentialStore.saveDeviceInfo(response.data)
-                credentialStore.saveAuthToken(response.token)
+            if (response.success && response.device != null) {
+                // Create a DeviceData object from the response
+                val deviceData = DeviceData(
+                    id = response.device.id,
+                    alias = response.device.alias,
+                    branchId = response.device.branchId,
+                    // If these are null, use default values
+                    companyId = response.device.companyId ?: "",
+                    companySchema = response.device.companySchema ?: "company_default",
+                    tableId = response.device.tableId,
+                    isActive = response.device.isActive,
+                    uiMode = response.device.uiMode ?: UiMode.CASHIER.name,
+                    serialNumber = response.device.serialNumber ?: deviceSerialNumber
+                )
 
-                // Save the serial number we used
+                // Save device info
+                credentialStore.saveDeviceInfo(deviceData)
+
+                // Save token if provided
+                if (response.token != null) {
+                    credentialStore.saveAuthToken(response.token)
+                }
+
+                // Save serial number again to ensure it's consistent
                 credentialStore.saveSerialNumber(deviceSerialNumber)
 
-                // Update UI mode from response
-                val newMode = response.data.uiMode?.let {
+                // Update UI mode
+                val newMode = deviceData.uiMode?.let {
                     try {
                         UiMode.valueOf(it.uppercase())
                     } catch (e: IllegalArgumentException) {
@@ -135,14 +136,25 @@ class DeviceRepository(
 
                 _uiMode.value = newMode
 
-                DeviceRegistrationState.Success(response.data.id)
+                Log.d(TAG, "Device registered successfully: ${deviceData.id}, Mode: $newMode")
+                val success = DeviceRegistrationState.Success(deviceData.id)
+                _deviceRegistrationState.value = success
+                success
             } else {
-                DeviceRegistrationState.Error(response.error ?: "Registration failed: Backend timestamp format issue. Please contact support.")
+                val errorMsg = response.error ?: response.message ?: "Registration failed"
+                Log.e(TAG, "Registration failed: $errorMsg")
+                val error = DeviceRegistrationState.Error(errorMsg)
+                _deviceRegistrationState.value = error
+                error
             }
         } catch (e: Exception) {
-            DeviceRegistrationState.Error(e.message ?: "Unknown error")
+            Log.e(TAG, "Exception during registration", e)
+            val error = DeviceRegistrationState.Error(e.message ?: "Unknown error")
+            _deviceRegistrationState.value = error
+            error
         }
     }
+
     /**
      * Authenticate a previously registered device
      */
@@ -175,12 +187,18 @@ class DeviceRepository(
 
                 _uiMode.value = newMode
 
-                DeviceRegistrationState.Success(response.device.id)
+                val success = DeviceRegistrationState.Success(response.device.id)
+                _deviceRegistrationState.value = success
+                success
             } else {
-                DeviceRegistrationState.Error("Authentication failed")
+                val error = DeviceRegistrationState.Error("Authentication failed")
+                _deviceRegistrationState.value = error
+                error
             }
         } catch (e: Exception) {
-            DeviceRegistrationState.Error(e.message ?: "Unknown error")
+            val error = DeviceRegistrationState.Error(e.message ?: "Unknown error")
+            _deviceRegistrationState.value = error
+            error
         }
     }
 
