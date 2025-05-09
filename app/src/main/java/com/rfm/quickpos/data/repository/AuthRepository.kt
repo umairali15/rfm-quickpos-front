@@ -21,9 +21,12 @@ class AuthRepository(
     val authState: StateFlow<AuthState> = _authState.asStateFlow()
 
     /**
-     * Authenticate a user with PIN
+     * Authenticate a user with email and PIN
+     * @param email User's email address
+     * @param pin User's 4-digit PIN
+     * @return Authentication state after login attempt
      */
-    suspend fun loginWithPin(pin: String, email: String? = null): AuthState {
+    suspend fun loginWithPin(email: String, pin: String): AuthState {
         _authState.value = AuthState.Loading
 
         return try {
@@ -34,18 +37,22 @@ class AuthRepository(
                 // Save auth token
                 credentialStore.saveAuthToken(response.token)
 
-                // Check company schema matches device registration
-                val deviceSchema = credentialStore.getCompanySchema()
-                if (deviceSchema != null && deviceSchema != response.companySchema) {
-                    return AuthState.Error("User belongs to a different company than this device")
-                }
+                // Save company schema
+                credentialStore.saveCompanySchema(response.companySchema)
 
-                AuthState.Success(response.user)
+                // Update state
+                val newState = AuthState.Success(response.user)
+                _authState.value = newState
+                return newState
             } else {
-                AuthState.Error("Authentication failed")
+                val errorState = AuthState.Error("Authentication failed")
+                _authState.value = errorState
+                return errorState
             }
         } catch (e: Exception) {
-            AuthState.Error(e.message ?: "Unknown error")
+            val errorState = AuthState.Error(e.message ?: "Unknown error")
+            _authState.value = errorState
+            return errorState
         }
     }
 

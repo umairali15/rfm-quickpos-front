@@ -72,14 +72,24 @@ class PinLoginViewModel(
     }
 
     /**
-     * Authenticate user with PIN
+     * Authenticate user with email and PIN
+     * @param email User's email address
+     * @param pin User's 4-digit PIN
+     * @param mode UI mode to use after authentication
      */
-    fun authenticateWithPin(pin: String, mode: UiMode) {
+    fun authenticateWithPin(email: String, pin: String, mode: UiMode) {
         viewModelScope.launch {
-            // Check if pin meets minimum length
+            // Check if inputs are valid
             if (pin.length < 4) {
                 _viewState.value = _viewState.value.copy(
                     errorMessage = "PIN must be at least 4 digits"
+                )
+                return@launch
+            }
+
+            if (email.isEmpty()) {
+                _viewState.value = _viewState.value.copy(
+                    errorMessage = "Email is required"
                 )
                 return@launch
             }
@@ -89,8 +99,8 @@ class PinLoginViewModel(
                 deviceRepository.updateUiMode(mode)
             }
 
-            // Authenticate user
-            authRepository.loginWithPin(pin)
+            // Authenticate user with email and PIN
+            authRepository.loginWithPin(email, pin)
         }
     }
 

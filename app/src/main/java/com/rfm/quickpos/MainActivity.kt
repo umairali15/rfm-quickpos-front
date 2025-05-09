@@ -229,33 +229,7 @@ class MainActivity : ComponentActivity() {
             // First step should be authentication
             _appState.value = AppState.NeedsAuthentication
 
-            // Check if device is registered
-            if (!deviceRepository.isDeviceRegistered()) {
-                _appState.value = AppState.NeedsDeviceRegistration
-                return@launch
-            }
 
-            // Try to authenticate device
-            try {
-                deviceRepository.authenticateDevice()
-                // Device authenticated successfully
-
-                // Check UI mode to determine next step
-                if (deviceRepository.uiMode.first() == UiMode.KIOSK) {
-                    // Kiosk mode doesn't need user authentication
-                    _appState.value = AppState.Ready
-                } else {
-                    // In Cashier mode, check if user is authenticated
-                    if (authRepository.isAuthenticated()) {
-                        _appState.value = AppState.Ready
-                    } else {
-                        _appState.value = AppState.NeedsAuthentication
-                    }
-                }
-            } catch (e: Exception) {
-                // Failed to authenticate device, need to re-register
-                _appState.value = AppState.NeedsDeviceRegistration
-            }
         }
     }
 

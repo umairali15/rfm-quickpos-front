@@ -83,6 +83,12 @@ class SecureCredentialStore(context: Context) {
             .remove(KEY_AUTH_TOKEN)
             .apply()
     }
+    // Add this method if not already present
+    fun saveCompanySchema(schema: String) {
+        preferences.edit()
+            .putString(KEY_COMPANY_SCHEMA, schema)
+            .apply()
+    }
 
     // UI Mode
     fun saveUiMode(mode: UiMode) {

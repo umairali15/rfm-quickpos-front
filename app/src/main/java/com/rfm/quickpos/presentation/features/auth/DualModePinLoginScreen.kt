@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -21,10 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -64,9 +66,12 @@ fun DualModePinLoginScreen(
         }
     }
 
+    // Add email state
+    var email by remember { mutableStateOf("") }
     var pin by remember { mutableStateOf("") }
     var mode by remember { mutableStateOf(UiMode.CASHIER) }
     var isEditingMode by remember { mutableStateOf(false) }
+
     // Update error message display
     var showError by remember { mutableStateOf(false) }
     val currentError = viewState.errorMessage ?: errorMessage
@@ -119,7 +124,7 @@ fun DualModePinLoginScreen(
 
             // Subtitle
             Text(
-                text = "Enter your PIN to continue",
+                text = "Enter your email and PIN to continue",
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
             )
@@ -154,13 +159,34 @@ fun DualModePinLoginScreen(
                         Spacer(modifier = Modifier.width(8.dp))
 
                         Text(
-                            text = errorMessage ?: "Invalid PIN. Please try again.",
+                            text = currentError ?: "Please enter both email and PIN.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.error
                         )
                     }
                 }
             }
+
+            // Email input field
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text("Email Address") },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Email,
+                        contentDescription = null
+                    )
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            )
 
             // Mode selector (Cashier/Kiosk)
             if (isEditingMode) {
@@ -317,8 +343,8 @@ fun DualModePinLoginScreen(
                     // Submit button
                     IconButton(
                         onClick = {
-                            if (pin.length >= 4) {
-                                viewModel.authenticateWithPin(pin, mode)
+                            if (pin.length >= 4 && email.isNotEmpty()) {
+                                viewModel.authenticateWithPin(email, pin, mode)
                             } else {
                                 viewModel.clearError()
                                 showError = true
@@ -363,7 +389,7 @@ fun DualModePinLoginScreen(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // NEW: Device Pairing button
+                // Device Pairing button
                 TextButton(
                     onClick = onDevicePairing
                 ) {
