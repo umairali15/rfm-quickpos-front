@@ -33,7 +33,7 @@ data class CompanyInfo(
  */
 data class BusinessTypeConfig(
     val name: String,
-    val features: List<String>,
+    val features: List<String> = emptyList(),
     @SerializedName("supports_modifiers") val supportsModifiers: Boolean = false,
     @SerializedName("supports_tables") val supportsTables: Boolean = false,
     @SerializedName("supports_inventory") val supportsInventory: Boolean = false,
@@ -47,7 +47,7 @@ data class BusinessTypeConfig(
  */
 data class CategoryResponse(
     val success: Boolean,
-    val data: List<Category>, // Changed from 'categories' to 'data'
+    val data: List<Category>,
     val error: String? = null
 )
 
@@ -66,12 +66,12 @@ data class Category(
  */
 data class ItemResponse(
     val success: Boolean,
-    val data: List<Item>, // Changed from 'items' to 'data'
+    val data: List<Item>,
     val error: String? = null
 )
 
 /**
- * Item (product) model
+ * Item (product) model - FIXED to match API structure
  */
 data class Item(
     val id: String,
@@ -97,20 +97,19 @@ data class Item(
     @SerializedName("service_level") val serviceLevel: String? = null,  // For service businesses
     @SerializedName("modifier_group_ids") val modifierGroupIds: List<String>? = null,
 
-    // Inventory settings
+    // Item settings
     val settings: ItemSettings? = null
 )
 
 /**
- * Item settings
+ * Item settings - FIXED structure
  */
 data class ItemSettings(
-    @SerializedName("inventory") val inventory: InventorySettings? = null,
-    @SerializedName("variations") val variations: List<Variation>? = null
+    @SerializedName("inventory") val inventory: InventorySettings? = null
 )
 
 /**
- * Inventory settings
+ * Inventory settings - FIXED to include variations
  */
 data class InventorySettings(
     @SerializedName("cost_price") val costPrice: Double? = null,
@@ -118,7 +117,12 @@ data class InventorySettings(
     @SerializedName("low_stock_alert") val lowStockAlert: Double? = null,
     @SerializedName("primary_unit") val primaryUnit: String? = null,
     @SerializedName("secondary_unit") val secondaryUnit: String? = null,
-    @SerializedName("available_branches") val availableBranches: List<String>? = null
+    @SerializedName("available_branches") val availableBranches: List<String>? = null,
+    // Add these missing fields
+    @SerializedName("has_variations") val hasVariations: Boolean? = null,
+    @SerializedName("variations") val variations: List<Variation>? = null,
+    @SerializedName("discount_type") val discountType: String? = null,
+    @SerializedName("discount_value") val discountValue: Double? = null
 )
 
 /**
@@ -142,7 +146,7 @@ data class VariationOption(
  */
 data class ModifierGroupResponse(
     val success: Boolean,
-    @SerializedName("data") val data: List<ModifierGroup>, // Changed from 'modifier_groups' to 'data'
+    @SerializedName("data") val data: List<ModifierGroup>,
     val error: String? = null
 )
 
@@ -166,4 +170,41 @@ data class Modifier(
     val name: String,
     @SerializedName("price_adjustment") val priceAdjustment: Double = 0.0,
     val available: Boolean = true
+)
+
+// Include the presentation models here if they don't have a better place
+/**
+ * Data class representing a product in the catalog
+ */
+data class Product(
+    val id: String,
+    val name: String,
+    val price: Double,
+    val categoryId: String,
+    val barcode: String? = null,
+    val imageUrl: String? = null,
+    val discountPercentage: Int? = null,
+    val isActive: Boolean = true
+)
+
+/**
+ * Data class representing a product category
+ */
+data class ProductCategory(
+    val id: String,
+    val name: String,
+    val sortOrder: Int = 0
+)
+
+/**
+ * State for the catalog screen
+ */
+data class CatalogState(
+    val isLoading: Boolean = false,
+    val categories: List<ProductCategory> = emptyList(),
+    val products: List<Product> = emptyList(),
+    val selectedCategoryId: String? = null,
+    val searchQuery: String = "",
+    val cartItemCount: Int = 0,
+    val error: String? = null
 )

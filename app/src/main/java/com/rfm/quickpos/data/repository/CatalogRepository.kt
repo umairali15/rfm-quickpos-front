@@ -366,8 +366,19 @@ class CatalogRepository(
                 _syncState.value = CatalogSyncState.Error("Failed to fetch items: ${itemsResponse.error}")
                 return false
             }
+
+            itemsResponse.data.forEach { item ->
+                Log.d("CatalogRepo", "Item: ${item.name}")
+                Log.d("CatalogRepo", "Has settings: ${item.settings != null}")
+                Log.d("CatalogRepo", "Has inventory: ${item.settings?.inventory != null}")
+                Log.d("CatalogRepo", "Has variations: ${item.settings?.inventory?.variations != null}")
+                Log.d("CatalogRepo", "Variations count: ${item.settings?.inventory?.variations?.size ?: 0}")
+            }
+
             _items.value = itemsResponse.data // Changed from 'items' to 'data'
             Log.d(TAG, "Synced ${itemsResponse.data.size} items")
+
+
 
             // Fetch modifier groups based on business type
             if (_businessTypeConfig.value?.supportsModifiers == true) {

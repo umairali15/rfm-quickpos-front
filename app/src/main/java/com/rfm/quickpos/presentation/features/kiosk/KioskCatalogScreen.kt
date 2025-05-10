@@ -58,8 +58,8 @@ import androidx.compose.ui.unit.sp
 import com.rfm.quickpos.presentation.common.components.ProductCard
 import com.rfm.quickpos.presentation.common.components.RfmCategoryChip
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
-import com.rfm.quickpos.presentation.features.catalog.Product
-import com.rfm.quickpos.presentation.features.catalog.ProductCategory
+import com.rfm.quickpos.data.remote.models.Product
+import com.rfm.quickpos.data.remote.models.ProductCategory
 import kotlinx.coroutines.delay
 
 /**
