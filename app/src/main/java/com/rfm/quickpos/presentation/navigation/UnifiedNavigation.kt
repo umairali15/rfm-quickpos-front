@@ -3,8 +3,10 @@ package com.rfm.quickpos.presentation.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.*
 import androidx.navigation.compose.*
+import com.rfm.quickpos.QuickPOSApplication
 import com.rfm.quickpos.data.repository.AuthRepository
 import com.rfm.quickpos.data.repository.DeviceRepository
 import com.rfm.quickpos.domain.model.DevicePairingInfo
@@ -240,35 +242,23 @@ fun UnifiedNavigation(
         // Catalog
         composable(Screen.Catalog.route) {
             if (uiMode == UiMode.CASHIER) {
-                var showAddItemSheet by remember { mutableStateOf(false) }
+                val catalogRepository =
+                    (LocalContext.current.applicationContext as QuickPOSApplication).catalogRepository
 
-                CatalogScreen(
-                    state = sampleData.catalogState,
+                BusinessTypeCatalogScreen(
+                    catalogRepository = catalogRepository,
                     onBackClick = { navController.popBackStack() },
-                    onSearchQueryChange = { /* Update search query */ },
-                    onSearchSubmit = { /* Perform search */ },
-                    onCategorySelected = { /* Filter by category */ },
-                    onProductClick = { product ->
-                        navController.navigate(Screen.ItemDetail.createRoute(product.id))
+                    onProductClick = { item ->
+                        // Navigate to item detail with the item ID
+                        navController.navigate(Screen.ItemDetail.createRoute(item.id))
                     },
-                    onAddToCart = { /* Add to cart */ },
-                    onScanBarcode = { showAddItemSheet = true },
+                    onAddToCart = { item ->
+                        // Add to cart logic
+                    },
+                    onScanBarcode = { /* Handle barcode scanning */ },
                     onCartClick = { navController.navigate(Screen.Cart.route) },
-                    onAddCustomItem = { showAddItemSheet = true }
+                    onAddCustomItem = { /* Handle custom item */ }
                 )
-
-                if (showAddItemSheet) {
-                    AddItemBottomSheet(
-                        onDismiss = { showAddItemSheet = false },
-                        onCatalogItemClick = { showAddItemSheet = false },
-                        onScanClick = { showAddItemSheet = false },
-                        onNonCatalogItemClick = { showAddItemSheet = false },
-                        onDiscountClick = { showAddItemSheet = false },
-                        onCommentClick = { showAddItemSheet = false },
-                        onCustomerClick = { showAddItemSheet = false },
-                        currentSaleNumber = "5917-1610-174122"
-                    )
-                }
             } else {
                 LaunchedEffect(Unit) {
                     navigateToHomeScreen(navController, uiMode)
@@ -415,16 +405,16 @@ fun UnifiedNavigation(
         ) {
             if (uiMode == UiMode.CASHIER) {
                 val productId = it.arguments?.getString("productId") ?: ""
-                val product = sampleData.products.find { it.id == productId }
-                    ?: Product(id = productId, name = "Unknown Product", price = 0.0, categoryId = "")
+                val catalogRepository = (LocalContext.current.applicationContext as QuickPOSApplication).catalogRepository
 
-                ItemDetailScreen(
-                    product = product,
+                BusinessTypeItemDetailScreen(
+                    itemId = productId,
+                    catalogRepository = catalogRepository,
                     onClose = { navController.popBackStack() },
-                    onAddToCart = { product, modifications ->
+                    onAddToCart = { cartItem ->
+                        // Add to cart logic
                         navController.popBackStack()
-                    },
-                    userCanOverridePrice = true // Based on user role
+                    }
                 )
             } else {
                 LaunchedEffect(Unit) {

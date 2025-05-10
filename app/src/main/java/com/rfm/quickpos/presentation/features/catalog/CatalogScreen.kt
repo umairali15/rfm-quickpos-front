@@ -1,3 +1,5 @@
+// app/src/main/java/com/rfm/quickpos/presentation/features/catalog/BusinessTypeCatalogScreen.kt
+
 package com.rfm.quickpos.presentation.features.catalog
 
 import androidx.compose.foundation.background
@@ -20,7 +22,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.QrCode
@@ -38,6 +39,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -45,32 +49,62 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.rfm.quickpos.presentation.common.components.ProductCard
+import com.rfm.quickpos.data.remote.models.BusinessTypeConfig
+import com.rfm.quickpos.data.remote.models.Category
+import com.rfm.quickpos.data.remote.models.Item
+import com.rfm.quickpos.data.repository.CatalogRepository
+import com.rfm.quickpos.data.repository.CatalogSyncState
+import com.rfm.quickpos.presentation.common.components.BusinessTypeAwareProductCard
 import com.rfm.quickpos.presentation.common.components.RfmCategoryChip
 import com.rfm.quickpos.presentation.common.components.RfmLoadingIndicator
 import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
 import com.rfm.quickpos.presentation.common.components.RfmSearchBar
-import com.rfm.quickpos.presentation.common.theme.RfmRed
 
 /**
- * Enhanced Catalog screen with fixed cart badge and improved visuals
+ * Business type-aware catalog screen
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CatalogScreen(
-    state: CatalogState,
+fun BusinessTypeCatalogScreen(
+    catalogRepository: CatalogRepository,
     onBackClick: () -> Unit,
-    onSearchQueryChange: (String) -> Unit,
-    onSearchSubmit: () -> Unit,
-    onCategorySelected: (String?) -> Unit,
-    onProductClick: (Product) -> Unit,
-    onAddToCart: (Product) -> Unit,
+    onProductClick: (Item) -> Unit,
+    onAddToCart: (Item) -> Unit,
     onScanBarcode: () -> Unit,
     onCartClick: () -> Unit,
     onAddCustomItem: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Collect data from repository
+    val categories by catalogRepository.categories.collectAsState()
+    val items by catalogRepository.items.collectAsState()
+    val businessTypeConfig by catalogRepository.businessTypeConfig.collectAsState()
+    val syncState by catalogRepository.syncState.collectAsState()
+
+    // Local UI state
+    val selectedCategoryId = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+    val searchQuery = remember { androidx.compose.runtime.mutableStateOf("") }
+
+    // Filter items based on selected category and search query
+    val filteredItems = remember(selectedCategoryId.value, searchQuery.value, items) {
+        var result = if (selectedCategoryId.value != null) {
+            items.filter { it.categoryId == selectedCategoryId.value }
+        } else {
+            items
+        }
+
+        if (searchQuery.value.isNotEmpty()) {
+            val query = searchQuery.value.lowercase()
+            result = result.filter {
+                it.name.lowercase().contains(query) ||
+                        it.sku?.lowercase()?.contains(query) == true ||
+                        it.barcode?.lowercase()?.contains(query) == true
+            }
+        }
+
+        result
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -82,10 +116,9 @@ fun CatalogScreen(
                         Text(
                             text = "RFM",
                             style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 22.sp
+                                fontWeight = FontWeight.Bold
                             ),
-                            color = RfmRed
+                            color = com.rfm.quickpos.presentation.common.theme.RfmRed
                         )
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -133,25 +166,23 @@ fun CatalogScreen(
                             )
                         }
 
-                        // Only show badge if cart has items
-                        if (state.cartItemCount > 0) {
-                            Surface(
-                                shape = CircleShape,
-                                color = RfmRed,
-                                modifier = Modifier
-                                    .size(if (state.cartItemCount > 9) 22.dp else 20.dp)
-                                    .align(Alignment.TopEnd)
-                            ) {
-                                Text(
-                                    text = if (state.cartItemCount > 99) "99+" else state.cartItemCount.toString(),
-                                    color = Color.White,
-                                    style = MaterialTheme.typography.labelSmall.copy(
-                                        fontWeight = FontWeight.Bold
-                                    ),
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.padding(2.dp)
-                                )
-                            }
+                        // Placeholder for cart badge
+                        Surface(
+                            shape = CircleShape,
+                            color = com.rfm.quickpos.presentation.common.theme.RfmRed,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .align(Alignment.TopEnd)
+                        ) {
+                            Text(
+                                text = "0", // Replace with actual cart count
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(2.dp)
+                            )
                         }
                     }
                 },
@@ -161,6 +192,7 @@ fun CatalogScreen(
             )
         },
         floatingActionButton = {
+            // Show business-specific FABs based on business type
             Column {
                 // Barcode scanner FAB with enhanced styling
                 FloatingActionButton(
@@ -178,15 +210,15 @@ fun CatalogScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Custom item FAB with enhanced styling
+                // Custom item FAB
                 FloatingActionButton(
                     onClick = onAddCustomItem,
-                    containerColor = RfmRed,
+                    containerColor = com.rfm.quickpos.presentation.common.theme.RfmRed,
                     contentColor = Color.White,
                     modifier = Modifier.shadow(elevation = 4.dp, shape = CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Add,
+                        imageVector = Icons.Default.QrCode,
                         contentDescription = "Add Custom Item",
                         modifier = Modifier.size(24.dp)
                     )
@@ -207,151 +239,153 @@ fun CatalogScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     RfmSearchBar(
-                        query = state.searchQuery,
-                        onQueryChange = onSearchQueryChange,
-                        onSearch = onSearchSubmit,
+                        query = searchQuery.value,
+                        onQueryChange = { searchQuery.value = it },
+                        onSearch = { /* Perform search */ },
                         placeholder = "Search products",
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
 
-                if (state.isLoading) {
-                    // Enhanced loading state with animation
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        RfmLoadingIndicator(
-                            size = 48f,
-                            strokeWidth = 4f,
-                            text = "Loading products...",
-                            animated = true
-                        )
-                    }
-                } else if (state.error != null) {
-                    // Enhanced error state with better visual styling
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(16.dp)
+                when (syncState) {
+                    is CatalogSyncState.Loading -> {
+                        // Loading state
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(48.dp)
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Text(
-                                text = state.error,
-                                style = MaterialTheme.typography.titleMedium,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.error
-                            )
-
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            RfmPrimaryButton(
-                                text = "Retry",
-                                onClick = onSearchSubmit,
-                                leadingIcon = Icons.Default.QrCode
+                            RfmLoadingIndicator(
+                                size = 48f,
+                                strokeWidth = 4f,
+                                text = (syncState as CatalogSyncState.Loading).message,
+                                animated = true
                             )
                         }
                     }
-                } else if (state.products.isEmpty()) {
-                    // Enhanced empty state with icon and better messaging
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.padding(16.dp)
+                    is CatalogSyncState.Error -> {
+                        // Error state
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.fillMaxSize()
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Search,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(48.dp)
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Text(
-                                text = "No products found",
-                                style = MaterialTheme.typography.titleMedium,
-                                textAlign = TextAlign.Center
-                            )
-
-                            Text(
-                                text = "Try adjusting your search or category filters",
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 4.dp)
-                            )
-                        }
-                    }
-                } else {
-                    // Categories row with enhanced visual styling
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .shadow(elevation = 1.dp)
-                            .background(MaterialTheme.colorScheme.surface)
-                            .padding(vertical = 8.dp)
-                    ) {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            // All category option
-                            item {
-                                RfmCategoryChip(
-                                    text = "All",
-                                    selected = state.selectedCategoryId == null,
-                                    onClick = { onCategorySelected(null) }
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(48.dp)
                                 )
-                            }
 
-                            // Categories from data
-                            items(state.categories) { category ->
-                                RfmCategoryChip(
-                                    text = category.name,
-                                    selected = state.selectedCategoryId == category.id,
-                                    onClick = { onCategorySelected(category.id) }
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Text(
+                                    text = (syncState as CatalogSyncState.Error).message,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+
+                                Spacer(modifier = Modifier.height(24.dp))
+
+                                RfmPrimaryButton(
+                                    text = "Retry",
+                                    onClick = { /* Retry catalog sync */ },
+                                    leadingIcon = Icons.Default.QrCode
                                 )
                             }
                         }
                     }
+                    else -> {
+                        if (filteredItems.isEmpty()) {
+                            // Empty state
+                            Box(
+                                contentAlignment = Alignment.Center,
+                                modifier = Modifier.fillMaxSize()
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(48.dp)
+                                    )
 
-                    // Enhanced products grid with better item sizing
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 160.dp),
-                        contentPadding = PaddingValues(16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(state.products) { product ->
-                            // Enhanced product card with click handling for entire card
-                            ProductCard(
-                                name = product.name,
-                                price = "AED ${String.format("%.2f", product.price)}",
-                                onClick = {
-                                    // Add to cart first, then proceed to product details if needed
-                                    onAddToCart(product)
-                                    onProductClick(product)
-                                },
-                                imageUrl = product.imageUrl,
-                                discountPercentage = product.discountPercentage,
-                            )
+                                    Spacer(modifier = Modifier.height(16.dp))
+
+                                    Text(
+                                        text = "No products found",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        textAlign = TextAlign.Center
+                                    )
+
+                                    Text(
+                                        text = "Try adjusting your search or category filters",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        textAlign = TextAlign.Center,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 4.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            // Categories row with enhanced visual styling
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                                    .shadow(elevation = 1.dp)
+                                    .background(MaterialTheme.colorScheme.surface)
+                                    .padding(vertical = 8.dp)
+                            ) {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = 16.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    // All category option
+                                    item {
+                                        RfmCategoryChip(
+                                            text = "All",
+                                            selected = selectedCategoryId.value == null,
+                                            onClick = { selectedCategoryId.value = null }
+                                        )
+                                    }
+
+                                    // Categories from data
+                                    items(categories) { category ->
+                                        RfmCategoryChip(
+                                            text = category.name,
+                                            selected = selectedCategoryId.value == category.id,
+                                            onClick = { selectedCategoryId.value = category.id }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Products grid - adapted to business type
+                            LazyVerticalGrid(
+                                columns = GridCells.Adaptive(minSize = 160.dp),
+                                contentPadding = PaddingValues(16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(filteredItems) { item ->
+                                    // Business type-aware product card
+                                    BusinessTypeAwareProductCard(
+                                        item = item,
+                                        businessTypeConfig = businessTypeConfig,
+                                        onClick = {
+                                            onProductClick(item)
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }

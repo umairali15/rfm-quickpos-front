@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
@@ -155,7 +156,11 @@ class MainActivity : ComponentActivity() {
                         DevicePairingScreenWithNavigation()
                     }
                     AppState.NeedsAuthentication -> {
-                        // Main app content with connectivity banner and PIN login
+
+                    }
+
+                    AppState.Ready -> {
+                        // Main app content with connectivity banner
                         Column {
                             // Global connectivity banner
                             ConnectivityBanner(
@@ -170,6 +175,39 @@ class MainActivity : ComponentActivity() {
 
                             // Create the navigation controller
                             val navController = rememberNavController()
+
+                            // Trigger catalog sync when app is ready
+                            val catalogRepository = (application as QuickPOSApplication).catalogRepository
+
+                            // Remember if we've already triggered sync for this session
+                            val hasTriggeredSync = remember { mutableStateOf(false) }
+
+                            LaunchedEffect(Unit) {
+                                if (!hasTriggeredSync.value) {
+                                    hasTriggeredSync.value = true
+
+                                    launch {
+                                        try {
+                                            // First get company info (if not already cached)
+                                            if (catalogRepository.companyInfo.value == null) {
+                                                Log.d(TAG, "Fetching company info...")
+                                                catalogRepository.fetchCompanyInfo()
+                                            }
+
+                                            // Check if we need to sync catalog data
+                                            if (catalogRepository.categories.value.isEmpty() ||
+                                                catalogRepository.items.value.isEmpty()) {
+                                                Log.d(TAG, "Syncing catalog data...")
+                                                catalogRepository.syncCatalogData()
+                                            } else {
+                                                Log.d(TAG, "Catalog data already available")
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.e(TAG, "Error during catalog sync", e)
+                                        }
+                                    }
+                                }
+                            }
 
                             // Use UnifiedNavigation with PIN login as the start
                             UnifiedNavigation(
@@ -194,11 +232,19 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 },
+                                // Updated MainActivity logout handling
+
                                 onLogout = {
                                     Log.d(TAG, "Logout requested")
-                                    // When user logs out, go back to auth screen
+
                                     lifecycleScope.launch {
+                                        // Clear catalog cache on logout
+                                        catalogRepository.clearCache()
+
+                                        // Logout user
                                         authRepository.logout()
+
+                                        // Reset app state
                                         _appState.value = AppState.NeedsAuthentication
                                     }
                                 },

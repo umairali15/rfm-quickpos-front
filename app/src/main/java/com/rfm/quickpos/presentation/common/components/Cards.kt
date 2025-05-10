@@ -213,7 +213,8 @@ fun ProductCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     imageUrl: String? = null,
-    discountPercentage: Int? = null
+    discountPercentage: Int? = null,
+    additionalContent: @Composable (() -> Unit)? = null
 ) {
     Card(
         onClick = onClick,
@@ -247,14 +248,26 @@ fun ProductCard(
                     .fillMaxWidth()
                     .aspectRatio(1f)
             ) {
-                // Always use a placeholder box for now
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .clip(ProductCardShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                )
+                // Use actual image or placeholder
+                if (imageUrl != null) {
+                    // Use an image loading library here
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .clip(ProductCardShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    )
+                } else {
+                    // Placeholder box
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .clip(ProductCardShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    )
+                }
 
                 // Discount tag if applicable
                 discountPercentage?.let {
@@ -300,6 +313,9 @@ fun ProductCard(
                         modifier = Modifier.size(24.dp)
                     )
                 }
+
+                // Additional business type-specific content if provided
+                additionalContent?.invoke()
             }
         }
     }

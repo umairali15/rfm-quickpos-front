@@ -1,0 +1,169 @@
+// app/src/main/java/com/rfm/quickpos/data/remote/models/CatalogModels.kt
+
+package com.rfm.quickpos.data.remote.models
+
+import com.google.gson.annotations.SerializedName
+
+/**
+ * Company information response
+ */
+data class CompanyInfoResponse(
+    val success: Boolean,
+    @SerializedName("company_info") val companyInfo: CompanyInfo,
+    @SerializedName("business_type_config") val businessTypeConfig: BusinessTypeConfig? = null,
+    val error: String? = null
+)
+
+/**
+ * Company information
+ */
+data class CompanyInfo(
+    val id: String,
+    val name: String,
+    @SerializedName("tax_number") val taxNumber: String? = null,
+    @SerializedName("contact_email") val contactEmail: String? = null,
+    @SerializedName("contact_phone") val contactPhone: String? = null,
+    @SerializedName("logo_url") val logoUrl: String? = null,
+    @SerializedName("business_type") val businessType: String,
+    @SerializedName("schema_name") val schemaName: String
+)
+
+/**
+ * Business type configuration
+ */
+data class BusinessTypeConfig(
+    val name: String,
+    val features: List<String>,
+    @SerializedName("supports_modifiers") val supportsModifiers: Boolean = false,
+    @SerializedName("supports_tables") val supportsTables: Boolean = false,
+    @SerializedName("supports_inventory") val supportsInventory: Boolean = false,
+    @SerializedName("supports_time_based_pricing") val supportsTimeBasedPricing: Boolean = false,
+    @SerializedName("requires_customer") val requiresCustomer: Boolean = false,
+    @SerializedName("ui_configuration") val uiConfiguration: Map<String, Any>? = null
+)
+
+/**
+ * Category response
+ */
+data class CategoryResponse(
+    val success: Boolean,
+    val categories: List<Category>,
+    val error: String? = null
+)
+
+/**
+ * Category model
+ */
+data class Category(
+    val id: String,
+    val name: String,
+    @SerializedName("parent_id") val parentId: String? = null,
+    @SerializedName("sort_order") val sortOrder: Int = 0
+)
+
+/**
+ * Item (product) response
+ */
+data class ItemResponse(
+    val success: Boolean,
+    val items: List<Item>,
+    val error: String? = null
+)
+
+/**
+ * Item (product) model
+ */
+data class Item(
+    val id: String,
+    val name: String,
+    val description: String? = null,
+    val sku: String? = null,
+    val barcode: String? = null,
+    @SerializedName("category_id") val categoryId: String? = null,
+    val price: Double,
+    @SerializedName("image_url") val imageUrl: String? = null,
+    val active: Boolean = true,
+
+    // Business-specific fields
+    @SerializedName("item_type") val itemType: String? = null,
+    @SerializedName("pricing_type") val pricingType: String? = null,
+    val duration: Int? = null,  // For service items (in minutes)
+    val calories: Int? = null,  // For restaurant items
+    val allergens: List<String>? = null,  // For restaurant items
+    @SerializedName("preparation_time") val preparationTime: Int? = null,  // For restaurant items
+    @SerializedName("requires_preparation") val requiresPreparation: Boolean = false,
+    @SerializedName("is_combo") val isCombo: Boolean = false,
+    @SerializedName("combo_items") val comboItems: List<String>? = null,  // Array of item IDs in combo
+    @SerializedName("service_level") val serviceLevel: String? = null,  // For service businesses
+    @SerializedName("modifier_group_ids") val modifierGroupIds: List<String>? = null,
+
+    // Inventory settings
+    val settings: ItemSettings? = null
+)
+
+/**
+ * Item settings
+ */
+data class ItemSettings(
+    @SerializedName("inventory") val inventory: InventorySettings? = null,
+    @SerializedName("variations") val variations: List<Variation>? = null
+)
+
+/**
+ * Inventory settings
+ */
+data class InventorySettings(
+    @SerializedName("cost_price") val costPrice: Double? = null,
+    @SerializedName("current_stock") val currentStock: Double? = null,
+    @SerializedName("low_stock_alert") val lowStockAlert: Double? = null,
+    @SerializedName("primary_unit") val primaryUnit: String? = null,
+    @SerializedName("secondary_unit") val secondaryUnit: String? = null,
+    @SerializedName("available_branches") val availableBranches: List<String>? = null
+)
+
+/**
+ * Variation for an item
+ */
+data class Variation(
+    val name: String,
+    val options: List<VariationOption>
+)
+
+/**
+ * Variation option
+ */
+data class VariationOption(
+    val name: String,
+    @SerializedName("price_adjustment") val priceAdjustment: Double = 0.0
+)
+
+/**
+ * Modifier group response
+ */
+data class ModifierGroupResponse(
+    val success: Boolean,
+    @SerializedName("modifier_groups") val modifierGroups: List<ModifierGroup>,
+    val error: String? = null
+)
+
+/**
+ * Modifier group model
+ */
+data class ModifierGroup(
+    val id: String,
+    val name: String,
+    val required: Boolean = false,
+    @SerializedName("min_selections") val minSelections: Int = 0,
+    @SerializedName("max_selections") val maxSelections: Int = 1,
+    val modifiers: List<Modifier>
+)
+
+/**
+ * Modifier model
+ */
+data class Modifier(
+    val id: String,
+    val name: String,
+    @SerializedName("price_adjustment") val priceAdjustment: Double = 0.0,
+    val available: Boolean = true
+)
