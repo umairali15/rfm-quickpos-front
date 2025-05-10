@@ -420,7 +420,7 @@ fun UnifiedNavigation(
                     }
                 }
 
-                // USE THE NEW UNIFIED SCREEN
+                // USE THE NEW UNIFIED SCREENN
                 ItemDetailScreenWithVariations(
                     itemId = productId,
                     catalogRepository = catalogRepository,
