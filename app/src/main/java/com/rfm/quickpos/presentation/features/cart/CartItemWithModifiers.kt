@@ -3,19 +3,21 @@
 package com.rfm.quickpos.presentation.features.cart
 
 /**
- * Cart item model that supports modifiers for business type specific functionality
+ * Enhanced cart item that supports both variations and modifiers
  */
 data class CartItemWithModifiers(
     val id: String,
     val name: String,
     val price: Double,
     val quantity: Int,
-    val discountPercentage: Int? = null,
-    val notes: String? = null,
-    val modifiers: List<ModifierData> = emptyList()
+    val variations: Map<String, String> = emptyMap(), // variation name to selected option name
+    val modifiers: List<ModifierData> = emptyList(),
+    val notes: String = "",
+    val discountPercentage: Int = 0,
+    val priceOverride: Double? = null
 ) {
     /**
-     * Modifier data for cart items
+     * Data class for modifier information
      */
     data class ModifierData(
         val id: String,
@@ -25,25 +27,63 @@ data class CartItemWithModifiers(
     )
 
     /**
-     * Calculate total price including modifiers
+     * Calculate the total unit price including variations, modifiers and overrides
      */
-    fun getTotalPrice(): Double {
-        val basePrice = price * quantity
-        val modifiersPrice = modifiers.sumOf { it.price } * quantity
-        return basePrice + modifiersPrice
-    }
+    val effectiveUnitPrice: Double
+        get() {
+            var price = priceOverride ?: this.price
+
+            // Add modifier prices
+            price += modifiers.sumOf { it.price }
+
+            // Apply discount
+            if (discountPercentage > 0) {
+                price *= (1 - discountPercentage / 100.0)
+            }
+
+            return price
+        }
 
     /**
-     * Get formatted modifier string for display
+     * Calculate the total line price
      */
-    fun getModifiersText(): String {
-        if (modifiers.isEmpty()) return ""
+    val totalPrice: Double
+        get() = effectiveUnitPrice * quantity
 
-        // Group modifiers by group name
-        val groupedModifiers = modifiers.groupBy { it.groupName }
+    /**
+     * Get a formatted string of all customizations
+     */
+    val customizationString: String
+        get() {
+            val parts = mutableListOf<String>()
 
-        return groupedModifiers.entries.joinToString("\n") { (groupName, mods) ->
-            "$groupName: ${mods.joinToString(", ") { it.name }}"
+            // Add variations
+            if (variations.isNotEmpty()) {
+                variations.forEach { (variationName, optionName) ->
+                    parts.add("$variationName: $optionName")
+                }
+            }
+
+            // Add modifiers
+            if (modifiers.isNotEmpty()) {
+                modifiers.forEach { modifier ->
+                    val priceStr = if (modifier.price > 0) " (+${String.format("%.2f", modifier.price)})" else ""
+                    parts.add("${modifier.name}$priceStr")
+                }
+            }
+
+            // Add notes
+            if (notes.isNotBlank()) {
+                parts.add("Notes: $notes")
+            }
+
+            return parts.joinToString(", ")
         }
-    }
+
+    /**
+     * Check if this item has any customizations
+     */
+    val hasCustomizations: Boolean
+        get() = variations.isNotEmpty() || modifiers.isNotEmpty() || notes.isNotBlank() ||
+                discountPercentage > 0 || priceOverride != null
 }
