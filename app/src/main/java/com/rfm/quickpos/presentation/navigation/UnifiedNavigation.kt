@@ -28,6 +28,9 @@ import com.rfm.quickpos.presentation.features.kiosk.*
 import com.rfm.quickpos.presentation.features.payment.*
 import com.rfm.quickpos.presentation.common.models.ActionCardData
 import java.util.Date
+import com.rfm.quickpos.data.remote.models.CatalogState
+import com.rfm.quickpos.data.remote.models.Product
+import com.rfm.quickpos.data.remote.models.ProductCategory
 
 @Composable
 fun UnifiedNavigation(
@@ -417,7 +420,8 @@ fun UnifiedNavigation(
                     }
                 }
 
-                BusinessTypeItemDetailScreen(
+                // USE THE NEW UNIFIED SCREEN
+                ItemDetailScreenWithVariations(
                     itemId = productId,
                     catalogRepository = catalogRepository,
                     onClose = { navController.popBackStack() },

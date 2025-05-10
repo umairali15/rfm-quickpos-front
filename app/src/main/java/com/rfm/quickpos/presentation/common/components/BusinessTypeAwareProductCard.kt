@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.rfm.quickpos.data.remote.models.BusinessTypeConfig
 import com.rfm.quickpos.data.remote.models.Item
+import com.rfm.quickpos.data.remote.models.Variation
 
 /**
  * Business type-aware product card that adapts display based on the business type
@@ -41,7 +42,7 @@ fun BusinessTypeAwareProductCard(
     val hasModifiers = item.modifierGroupIds?.isNotEmpty() == true
     val hasAllergens = item.allergens?.isNotEmpty() == true
     val isServiceItem = itemType == "service" || item.pricingType == "time-based"
-    val hasVariations = item.settings?.variations?.isNotEmpty() == true
+    val hasVariations = item.settings?.inventory?.variations?.isNotEmpty() == true
 
     // Delegate to the standard ProductCard but add business-specific attributes
     ProductCard(
