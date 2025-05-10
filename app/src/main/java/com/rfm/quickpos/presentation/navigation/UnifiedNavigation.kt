@@ -394,7 +394,7 @@ fun UnifiedNavigation(
             )
         }
 
-        // Item Detail
+        // Item Detail with Variations
         composable(
             route = Screen.ItemDetail.route,
             arguments = listOf(navArgument("productId") { type = NavType.StringType })
@@ -403,15 +403,44 @@ fun UnifiedNavigation(
                 val productId = it.arguments?.getString("productId") ?: ""
                 val catalogRepository = (LocalContext.current.applicationContext as QuickPOSApplication).catalogRepository
 
-                BusinessTypeItemDetailScreen(
-                    itemId = productId,
-                    catalogRepository = catalogRepository,
-                    onClose = { navController.popBackStack() },
-                    onAddToCart = { cartItem ->
-                        // Add to cart logic
+                // Get the item from the repository
+                val items by catalogRepository.items.collectAsState()
+                val item = items.find { it.id == productId }
+
+                if (item != null) {
+                    // Check if the item has variations or modifiers
+                    val hasVariations = item.settings?.variations?.isNotEmpty() == true
+                    val hasModifiers = item.modifierGroupIds?.isNotEmpty() == true
+
+                    if (hasVariations || hasModifiers) {
+                        // Show the variations screen
+                        ProductVariationsScreen(
+                            item = item,
+                            onBackClick = { navController.popBackStack() },
+                            onAddToCart = { productWithSelections ->
+                                // Add to cart with selections
+                                // You'll need to implement the cart logic here
+                                navController.popBackStack()
+                            }
+                        )
+                    } else {
+                        // Show the regular item detail screen for compatibility
+                        BusinessTypeItemDetailScreen(
+                            itemId = productId,
+                            catalogRepository = catalogRepository,
+                            onClose = { navController.popBackStack() },
+                            onAddToCart = { cartItem ->
+                                // Add to cart logic for items without variations
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+                } else {
+                    // Item not found, go back
+                    LaunchedEffect(Unit) {
                         navController.popBackStack()
                     }
-                )
+                }
             } else {
                 LaunchedEffect(Unit) {
                     navigateToHomeScreen(navController, uiMode)

@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.LocalDining
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Warning
@@ -39,6 +41,7 @@ fun BusinessTypeAwareProductCard(
     val hasModifiers = item.modifierGroupIds?.isNotEmpty() == true
     val hasAllergens = item.allergens?.isNotEmpty() == true
     val isServiceItem = itemType == "service" || item.pricingType == "time-based"
+    val hasVariations = item.settings?.variations?.isNotEmpty() == true
 
     // Delegate to the standard ProductCard but add business-specific attributes
     ProductCard(
@@ -51,6 +54,28 @@ fun BusinessTypeAwareProductCard(
         additionalContent = {
             // Business type specific additional content
             when {
+                // Show variations indicator first
+                hasVariations -> {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .padding(end = 4.dp)
+                                .size(16.dp)
+                        )
+                        Text(
+                            text = "Options available",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
                 // For restaurant items, show preparation time and allergens
                 hasAllergens || item.preparationTime != null -> {
                     Column(

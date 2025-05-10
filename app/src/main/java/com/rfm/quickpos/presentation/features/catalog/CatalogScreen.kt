@@ -40,10 +40,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshContainer
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -52,15 +49,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.repeatOnLifecycle
-import com.rfm.quickpos.data.remote.models.BusinessTypeConfig
-import com.rfm.quickpos.data.remote.models.Category
 import com.rfm.quickpos.data.remote.models.Item
 import com.rfm.quickpos.data.repository.CatalogRepository
 import com.rfm.quickpos.data.repository.CatalogSyncState
@@ -71,8 +62,6 @@ import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
 import com.rfm.quickpos.presentation.common.components.RfmSearchBar
 import com.rfm.quickpos.presentation.common.theme.RfmRed
 import kotlinx.coroutines.launch
-
-// app/src/main/java/com/rfm/quickpos/presentation/features/catalog/CatalogScreen.kt
 
 /**
  * Business type-aware catalog screen
@@ -122,6 +111,23 @@ fun BusinessTypeCatalogScreen(
         result
     }
 
+    // Refresh all data function
+    suspend fun refreshAllData() {
+        try {
+            // First get company info (if not already cached)
+            if (catalogRepository.companyInfo.value == null) {
+                catalogRepository.fetchCompanyInfo()
+            }
+
+            // Then sync catalog data
+            catalogRepository.syncCatalogData(forceRefresh = true)
+        } catch (e: Exception) {
+            // Error is already handled in the repository
+            // Just log it for debugging
+            android.util.Log.e("CatalogScreen", "Error refreshing data", e)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -134,7 +140,7 @@ fun BusinessTypeCatalogScreen(
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontWeight = FontWeight.Bold
                             ),
-                            color = com.rfm.quickpos.presentation.common.theme.RfmRed
+                            color = RfmRed
                         )
 
                         Spacer(modifier = Modifier.width(6.dp))
@@ -184,7 +190,7 @@ fun BusinessTypeCatalogScreen(
                         // Placeholder for cart badge
                         Surface(
                             shape = CircleShape,
-                            color = com.rfm.quickpos.presentation.common.theme.RfmRed,
+                            color = RfmRed,
                             modifier = Modifier
                                 .size(20.dp)
                                 .align(Alignment.TopEnd)
@@ -225,7 +231,7 @@ fun BusinessTypeCatalogScreen(
 
                 FloatingActionButton(
                     onClick = onAddCustomItem,
-                    containerColor = com.rfm.quickpos.presentation.common.theme.RfmRed,
+                    containerColor = RfmRed,
                     contentColor = Color.White,
                     modifier = Modifier.shadow(elevation = 4.dp, shape = CircleShape)
                 ) {
@@ -283,7 +289,7 @@ fun BusinessTypeCatalogScreen(
                                 modifier = Modifier.padding(16.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Search,
+                                    imageVector = Icons.Default.Error,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.error,
                                     modifier = Modifier.size(48.dp)
@@ -300,15 +306,15 @@ fun BusinessTypeCatalogScreen(
 
                                 Spacer(modifier = Modifier.height(24.dp))
 
-                                // Fixed: Add proper retry implementation
+                                // Fixed: Implement proper retry function
                                 RfmPrimaryButton(
                                     text = "Retry",
                                     onClick = {
                                         coroutineScope.launch {
-                                            catalogRepository.syncCatalogData(forceRefresh = true)
+                                            refreshAllData()
                                         }
                                     },
-                                    leadingIcon = Icons.Default.QrCode
+                                    leadingIcon = Icons.Default.Refresh
                                 )
                             }
                         }
@@ -394,7 +400,17 @@ fun BusinessTypeCatalogScreen(
                                         item = item,
                                         businessTypeConfig = businessTypeConfig,
                                         onClick = {
-                                            onProductClick(item)
+                                            // Check if item has variations
+                                            val hasVariations = item.settings?.variations?.isNotEmpty() == true
+                                            val hasModifiers = item.modifierGroupIds?.isNotEmpty() == true
+
+                                            if (hasVariations || hasModifiers) {
+                                                // Navigate to variations screen
+                                                onProductClick(item)
+                                            } else {
+                                                // Add directly to cart
+                                                onAddToCart(item)
+                                            }
                                         }
                                     )
                                 }
@@ -406,4 +422,3 @@ fun BusinessTypeCatalogScreen(
         }
     }
 }
-
