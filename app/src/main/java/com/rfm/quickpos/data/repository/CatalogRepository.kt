@@ -26,6 +26,8 @@ private const val CATALOG_CACHE_FILE = "catalog_cache.json"
 private const val COMPANY_INFO_CACHE_FILE = "company_info_cache.json"
 private const val CATALOG_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000 // 24 hours
 
+// app/src/main/java/com/rfm/quickpos/data/repository/CatalogRepository.kt
+
 /**
  * Repository for catalog and business data
  * Handles data synchronization and caching
@@ -66,7 +68,6 @@ class CatalogRepository(
         // Load cached data on init
         loadCachedData()
     }
-
     /**
      * Initialize catalog data - this should be called when app is ready
      */
@@ -350,62 +351,39 @@ class CatalogRepository(
         _syncState.value = CatalogSyncState.Loading("Syncing catalog data")
 
         return try {
-            // Fetch categories with null safety
-            Log.d(TAG, "Fetching categories...")
+            // Fetch categories
             val categoriesResponse = apiService.getCategories()
-
-            Log.d(TAG, "Categories response - success: ${categoriesResponse.success}, " +
-                    "categories: ${categoriesResponse.categories?.size ?: "null"}")
-
             if (!categoriesResponse.success) {
                 _syncState.value = CatalogSyncState.Error("Failed to fetch categories: ${categoriesResponse.error}")
                 return false
             }
+            _categories.value = categoriesResponse.data // Changed from 'categories' to 'data'
+            Log.d(TAG, "Synced ${categoriesResponse.data.size} categories")
 
-            // Handle null categories list
-            _categories.value = categoriesResponse.categories ?: emptyList()
-            Log.d(TAG, "Synced ${_categories.value.size} categories")
-
-            // Fetch items with null safety
-            Log.d(TAG, "Fetching items...")
+            // Fetch items
             val itemsResponse = apiService.getItems()
-
-            Log.d(TAG, "Items response - success: ${itemsResponse.success}, " +
-                    "items: ${itemsResponse.items?.size ?: "null"}")
-
             if (!itemsResponse.success) {
                 _syncState.value = CatalogSyncState.Error("Failed to fetch items: ${itemsResponse.error}")
                 return false
             }
-
-            // Handle null items list
-            _items.value = itemsResponse.items ?: emptyList()
-            Log.d(TAG, "Synced ${_items.value.size} items")
+            _items.value = itemsResponse.data // Changed from 'items' to 'data'
+            Log.d(TAG, "Synced ${itemsResponse.data.size} items")
 
             // Fetch modifier groups based on business type
             if (_businessTypeConfig.value?.supportsModifiers == true) {
-                Log.d(TAG, "Fetching modifier groups...")
                 val modifiersResponse = apiService.getModifierGroups()
-
-                Log.d(TAG, "Modifiers response - success: ${modifiersResponse.success}, " +
-                        "modifierGroups: ${modifiersResponse.modifierGroups?.size ?: "null"}")
-
                 if (!modifiersResponse.success) {
                     _syncState.value = CatalogSyncState.Error("Failed to fetch modifiers: ${modifiersResponse.error}")
                     return false
                 }
-
-                // Handle null modifier groups list
-                _modifierGroups.value = modifiersResponse.modifierGroups ?: emptyList()
-                Log.d(TAG, "Synced ${_modifierGroups.value.size} modifier groups")
+                _modifierGroups.value = modifiersResponse.data // Changed from 'modifierGroups' to 'data'
+                Log.d(TAG, "Synced ${modifiersResponse.data.size} modifier groups")
             } else {
                 Log.d(TAG, "Business type does not support modifiers, skipping modifier sync")
-                _modifierGroups.value = emptyList()
             }
 
             // Save to cache
             saveCatalogCache()
-            lastSyncTime = System.currentTimeMillis()
 
             _syncState.value = CatalogSyncState.Success
             Log.d(TAG, "Catalog sync completed successfully. Categories: ${_categories.value.size}, " +

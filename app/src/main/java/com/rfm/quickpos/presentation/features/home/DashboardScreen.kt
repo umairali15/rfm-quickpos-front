@@ -55,7 +55,7 @@ fun DashboardScreen(
     currentUiMode: UiMode? = null,
     onChangeMode: ((UiMode) -> Unit)? = null,
     onLogout: () -> Unit = {},
-    onLogoutClick: () -> Unit?
+    onLogoutClick: () -> Unit // Changed from nullable to required
 ) {
     // Debug menu and profile menu visibility states
     var showDebugMenu by remember { mutableStateOf(false) }
@@ -82,7 +82,7 @@ fun DashboardScreen(
             onDismiss = { showProfileMenu = false },
             onLogout = {
                 showProfileMenu = false
-                onLogout()
+                onLogoutClick() // Call the logout function
             },
             onSettings = {
                 showProfileMenu = false

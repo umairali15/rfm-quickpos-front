@@ -47,7 +47,7 @@ data class BusinessTypeConfig(
  */
 data class CategoryResponse(
     val success: Boolean,
-    val categories: List<Category>,
+    val data: List<Category>, // Changed from 'categories' to 'data'
     val error: String? = null
 )
 
@@ -66,7 +66,7 @@ data class Category(
  */
 data class ItemResponse(
     val success: Boolean,
-    val items: List<Item>,
+    val data: List<Item>, // Changed from 'items' to 'data'
     val error: String? = null
 )
 
@@ -142,7 +142,7 @@ data class VariationOption(
  */
 data class ModifierGroupResponse(
     val success: Boolean,
-    @SerializedName("modifier_groups") val modifierGroups: List<ModifierGroup>,
+    @SerializedName("data") val data: List<ModifierGroup>, // Changed from 'modifier_groups' to 'data'
     val error: String? = null
 )
 

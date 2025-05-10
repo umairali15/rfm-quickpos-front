@@ -29,9 +29,6 @@ import com.rfm.quickpos.presentation.features.payment.*
 import com.rfm.quickpos.presentation.common.models.ActionCardData
 import java.util.Date
 
-/**
- * Unified navigation system that handles both Cashier and Kiosk modes
- */
 @Composable
 fun UnifiedNavigation(
     navController: NavHostController = rememberNavController(),
@@ -191,9 +188,8 @@ fun UnifiedNavigation(
         }
 
         // ===== CASHIER MODE SCREENS =====
-        // Dashboard
+        // Update Dashboard to handle logout properly
         composable(Screen.Dashboard.route) {
-            // Only show Dashboard if in CASHIER mode
             if (uiMode == UiMode.CASHIER) {
                 val shiftActions = getShiftActions(isShiftOpen, navController)
 
@@ -228,6 +224,7 @@ fun UnifiedNavigation(
                     additionalActions = shiftActions,
                     // Add logout action
                     onLogoutClick = {
+                        // Call the logout callback
                         onLogout?.invoke()
                     }
                 )
@@ -238,7 +235,6 @@ fun UnifiedNavigation(
                 }
             }
         }
-
         // Catalog
         composable(Screen.Catalog.route) {
             if (uiMode == UiMode.CASHIER) {
