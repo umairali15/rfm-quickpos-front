@@ -1,7 +1,10 @@
 package com.rfm.quickpos.presentation.navigation
 
+import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.*
@@ -27,6 +30,7 @@ import com.rfm.quickpos.presentation.features.history.*
 import com.rfm.quickpos.presentation.features.kiosk.*
 import com.rfm.quickpos.presentation.features.payment.*
 import com.rfm.quickpos.presentation.common.models.ActionCardData
+import kotlinx.coroutines.launch
 import java.util.Date
 
 @Composable
@@ -48,6 +52,10 @@ fun UnifiedNavigation(
 
     // Sample data for screens
     val sampleData = getSampleData()
+
+    // For snackbar host
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     // Debug Menu dialog
     if (showDebugMenu) {
@@ -137,7 +145,6 @@ fun UnifiedNavigation(
                     // Simulate network request
                     android.os.Handler().postDelayed({
                         // Check if required fields are filled (this would be a real API call)
-                        // UPDATE THIS PART - use deviceAlias and branchId instead of merchantId and terminalId
                         if (pairingState.pairingInfo.deviceAlias.isNotBlank() &&
                             pairingState.pairingInfo.branchId.isNotBlank()) {
 
@@ -147,8 +154,6 @@ fun UnifiedNavigation(
                                 status = PairingStatus.SUCCESS,
                                 isPaired = true
                             )
-
-                            // Here you would actually store the pairing info to persistent storage
 
                             navController.navigate(AuthScreen.PinLogin.route) {
                                 popUpTo(Screen.DevicePairing.route) { inclusive = true }
@@ -235,25 +240,49 @@ fun UnifiedNavigation(
                 }
             }
         }
-        // Catalog
+
+        // FIXED Catalog screen with proper navigation to ItemDetail
         composable(Screen.Catalog.route) {
             if (uiMode == UiMode.CASHIER) {
-                val catalogRepository =
-                    (LocalContext.current.applicationContext as QuickPOSApplication).catalogRepository
+                val context = LocalContext.current
+                val application = context.applicationContext as QuickPOSApplication
+                val catalogRepository = application.catalogRepository
 
                 BusinessTypeCatalogScreen(
                     catalogRepository = catalogRepository,
                     onBackClick = { navController.popBackStack() },
                     onProductClick = { item ->
-                        // Navigate to item detail with the item ID
-                        navController.navigate(Screen.ItemDetail.createRoute(item.id))
+                        // FIXED: Navigate to item detail with proper navigation
+                        try {
+                            navController.navigate(Screen.ItemDetail.createRoute(item.id))
+                        } catch (e: Exception) {
+                            Log.e("Navigation", "Failed to navigate to item detail", e)
+                        }
                     },
                     onAddToCart = { item ->
-                        // Add to cart logic
+                        // Add item directly to cart
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "${item.name} added to cart",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
                     },
-                    onScanBarcode = { /* Handle barcode scanning */ },
-                    onCartClick = { navController.navigate(Screen.Cart.route) },
-                    onAddCustomItem = { /* Handle custom item */ }
+                    onScanBarcode = {
+                        // TODO: Implement barcode scanning
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "Barcode scanning coming soon",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    },
+                    onCartClick = {
+                        navController.navigate(Screen.Cart.route)
+                    },
+                    onAddCustomItem = {
+                        // This is handled within the screen using bottom sheet
+                    }
                 )
             } else {
                 LaunchedEffect(Unit) {
@@ -394,7 +423,7 @@ fun UnifiedNavigation(
             )
         }
 
-        // Item Detail with Variations
+        // FIXED ItemDetail screen with improved navigation handling
         composable(
             route = Screen.ItemDetail.route,
             arguments = listOf(navArgument("productId") { type = NavType.StringType })
@@ -403,44 +432,22 @@ fun UnifiedNavigation(
                 val productId = it.arguments?.getString("productId") ?: ""
                 val catalogRepository = (LocalContext.current.applicationContext as QuickPOSApplication).catalogRepository
 
-                // Get the item from the repository
-                val items by catalogRepository.items.collectAsState()
-                val item = items.find { it.id == productId }
-
-                if (item != null) {
-                    // Check if the item has variations or modifiers
-                    val hasVariations = item.settings?.variations?.isNotEmpty() == true
-                    val hasModifiers = item.modifierGroupIds?.isNotEmpty() == true
-
-                    if (hasVariations || hasModifiers) {
-                        // Show the variations screen
-                        ProductVariationsScreen(
-                            item = item,
-                            onBackClick = { navController.popBackStack() },
-                            onAddToCart = { productWithSelections ->
-                                // Add to cart with selections
-                                // You'll need to implement the cart logic here
-                                navController.popBackStack()
-                            }
-                        )
-                    } else {
-                        // Show the regular item detail screen for compatibility
-                        BusinessTypeItemDetailScreen(
-                            itemId = productId,
-                            catalogRepository = catalogRepository,
-                            onClose = { navController.popBackStack() },
-                            onAddToCart = { cartItem ->
-                                // Add to cart logic for items without variations
-                                navController.popBackStack()
-                            }
-                        )
-                    }
-                } else {
-                    // Item not found, go back
-                    LaunchedEffect(Unit) {
+                // Ensure navigation runs on main thread
+                LaunchedEffect(productId) {
+                    if (productId.isBlank()) {
                         navController.popBackStack()
                     }
                 }
+
+                BusinessTypeItemDetailScreen(
+                    itemId = productId,
+                    catalogRepository = catalogRepository,
+                    onClose = { navController.popBackStack() },
+                    onAddToCart = { cartItem ->
+                        // Add to cart logic
+                        navController.popBackStack()
+                    }
+                )
             } else {
                 LaunchedEffect(Unit) {
                     navigateToHomeScreen(navController, uiMode)

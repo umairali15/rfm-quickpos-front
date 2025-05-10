@@ -1,8 +1,15 @@
-// app/src/main/java/com/rfm/quickpos/presentation/features/catalog/BusinessTypeCatalogScreen.kt
+// app/src/main/java/com/rfm/quickpos/presentation/features/catalog/CatalogScreen.kt
 
 package com.rfm.quickpos.presentation.features.catalog
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,37 +28,58 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Store
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import com.rfm.quickpos.data.remote.models.Item
 import com.rfm.quickpos.data.repository.CatalogRepository
 import com.rfm.quickpos.data.repository.CatalogSyncState
@@ -61,10 +89,11 @@ import com.rfm.quickpos.presentation.common.components.RfmLoadingIndicator
 import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
 import com.rfm.quickpos.presentation.common.components.RfmSearchBar
 import com.rfm.quickpos.presentation.common.theme.RfmRed
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Business type-aware catalog screen
+ * Enhanced business type-aware catalog screen with modern design
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,14 +111,19 @@ fun BusinessTypeCatalogScreen(
     val categories by catalogRepository.categories.collectAsState()
     val items by catalogRepository.items.collectAsState()
     val businessTypeConfig by catalogRepository.businessTypeConfig.collectAsState()
+    val companyInfo by catalogRepository.companyInfo.collectAsState()
     val syncState by catalogRepository.syncState.collectAsState()
 
     // Local UI state
-    val selectedCategoryId = remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
-    val searchQuery = remember { androidx.compose.runtime.mutableStateOf("") }
+    val selectedCategoryId = remember { mutableStateOf<String?>(null) }
+    val searchQuery = remember { mutableStateOf("") }
+    val cartItemCount = remember { mutableStateOf(2) } // This should come from cart repository
 
     // Create coroutine scope for refreshing
     val coroutineScope = rememberCoroutineScope()
+
+    // Bottom sheet state
+    val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
 
     // Filter items based on selected category and search query
     val filteredItems = remember(selectedCategoryId.value, searchQuery.value, items) {
@@ -108,141 +142,42 @@ fun BusinessTypeCatalogScreen(
             }
         }
 
-        result
+        result.filter { it.active }
     }
 
-    // Refresh all data function
-    suspend fun refreshAllData() {
-        try {
-            // First get company info (if not already cached)
-            if (catalogRepository.companyInfo.value == null) {
-                catalogRepository.fetchCompanyInfo()
-            }
-
-            // Then sync catalog data
-            catalogRepository.syncCatalogData(forceRefresh = true)
-        } catch (e: Exception) {
-            // Error is already handled in the repository
-            // Just log it for debugging
-            android.util.Log.e("CatalogScreen", "Error refreshing data", e)
-        }
+    // Handle bottom sheet opening for custom item
+    LaunchedEffect(onAddCustomItem) {
+        // Use a different approach since onAddCustomItem is a function parameter
     }
 
-    Scaffold(
+    BottomSheetScaffold(
+        scaffoldState = bottomSheetScaffoldState,
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "RFM",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
-                            color = RfmRed
-                        )
-
-                        Spacer(modifier = Modifier.width(6.dp))
-
-                        Text(
-                            text = "Catalog",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                    }
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                actions = {
-                    // Filter button
-                    IconButton(onClick = { /* Not implemented in demo */ }) {
-                        Icon(
-                            imageVector = Icons.Default.FilterList,
-                            contentDescription = "Filter"
-                        )
-                    }
-
-                    // Cart icon with badge
-                    Box(
-                        modifier = Modifier.padding(end = 8.dp, top = 4.dp),
-                        contentAlignment = Alignment.TopEnd
-                    ) {
-                        IconButton(
-                            onClick = onCartClick,
-                            modifier = Modifier.size(48.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingCart,
-                                contentDescription = "Cart",
-                                modifier = Modifier.size(28.dp),
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        // Placeholder for cart badge
-                        Surface(
-                            shape = CircleShape,
-                            color = RfmRed,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .align(Alignment.TopEnd)
-                        ) {
-                            Text(
-                                text = "0", // Replace with actual cart count
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold
-                                ),
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(2.dp)
-                            )
-                        }
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                )
+            EnhancedCatalogTopBar(
+                companyInfo = companyInfo,
+                cartItemCount = cartItemCount.value,
+                onBackClick = onBackClick,
+                onCartClick = onCartClick
             )
         },
-        floatingActionButton = {
-            Column {
-                FloatingActionButton(
-                    onClick = onScanBarcode,
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.shadow(elevation = 4.dp, shape = CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.QrCodeScanner,
-                        contentDescription = "Scan Barcode",
-                        modifier = Modifier.size(24.dp)
-                    )
+        sheetContent = {
+            AddCustomItemBottomSheet(
+                onDismiss = {
+                    coroutineScope.launch {
+                        bottomSheetScaffoldState.bottomSheetState.partialExpand()
+                    }
+                },
+                onAddItem = { customItem ->
+                    // Handle adding custom item
+                    coroutineScope.launch {
+                        bottomSheetScaffoldState.bottomSheetState.hide()
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                FloatingActionButton(
-                    onClick = onAddCustomItem,
-                    containerColor = RfmRed,
-                    contentColor = Color.White,
-                    modifier = Modifier.shadow(elevation = 4.dp, shape = CircleShape)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.QrCode,
-                        contentDescription = "Add Custom Item",
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-            }
-        }
+            )
+        },
+        sheetPeekHeight = 0.dp,
+        sheetShape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+        sheetContainerColor = MaterialTheme.colorScheme.surface
     ) { paddingValues ->
         Box(
             modifier = modifier
@@ -250,175 +185,515 @@ fun BusinessTypeCatalogScreen(
                 .padding(paddingValues)
         ) {
             Column {
-                // Search bar
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                ) {
-                    RfmSearchBar(
-                        query = searchQuery.value,
-                        onQueryChange = { searchQuery.value = it },
-                        onSearch = { /* Perform search */ },
-                        placeholder = "Search products",
-                        modifier = Modifier.fillMaxWidth()
+                // Search bar with modern design
+                SearchSection(
+                    searchQuery = searchQuery.value,
+                    onSearchQueryChange = { searchQuery.value = it },
+                    selectedCategoryId = selectedCategoryId.value,
+                    categories = categories,
+                    onCategorySelected = { categoryId ->
+                        selectedCategoryId.value = categoryId
+                    }
+                )
+
+                // Main content based on state
+                AnimatedContent(
+                    targetState = syncState,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(300)) togetherWith
+                                fadeOut(animationSpec = tween(300))
+                    },
+                    label = "catalog-content"
+                ) { state ->
+                    when (state) {
+                        is CatalogSyncState.Loading -> {
+                            LoadingContent(message = state.message)
+                        }
+                        is CatalogSyncState.Error -> {
+                            ErrorContent(
+                                message = state.message,
+                                onRetry = {
+                                    coroutineScope.launch {
+                                        catalogRepository.syncCatalogData(forceRefresh = true)
+                                    }
+                                }
+                            )
+                        }
+                        else -> {
+                            if (filteredItems.isEmpty()) {
+                                EmptyStateContent(
+                                    hasCategory = selectedCategoryId.value != null,
+                                    onResetFilters = {
+                                        selectedCategoryId.value = null
+                                        searchQuery.value = ""
+                                    }
+                                )
+                            } else {
+                                ProductsContent(
+                                    items = filteredItems,
+                                    businessTypeConfig = businessTypeConfig,
+                                    onProductClick = onProductClick,
+                                    onAddToCart = onAddToCart
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Floating action buttons
+            FloatingActionButtons(
+                onScanBarcode = onScanBarcode,
+                onAddCustomItem = {
+                    coroutineScope.launch {
+                        bottomSheetScaffoldState.bottomSheetState.expand()
+                    }
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp)
+            )
+        }
+    }
+}
+
+/**
+ * Enhanced top bar with company and branch info
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun EnhancedCatalogTopBar(
+    companyInfo: com.rfm.quickpos.data.remote.models.CompanyInfo?,
+    cartItemCount: Int,
+    onBackClick: () -> Unit,
+    onCartClick: () -> Unit
+) {
+    Column {
+        TopAppBar(
+            title = {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Store,
+                            contentDescription = null,
+                            tint = RfmRed,
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = companyInfo?.name ?: "Catalog",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    if (companyInfo?.businessType != null) {
+                        Text(
+                            text = companyInfo.businessType.replaceFirstChar { it.titlecase() },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            },
+            navigationIcon = {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back"
                     )
                 }
+            },
+            actions = {
+                // Cart icon with enhanced badge
+                Box(
+                    modifier = Modifier.padding(end = 8.dp),
+                    contentAlignment = Alignment.TopEnd
+                ) {
+                    IconButton(
+                        onClick = onCartClick,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ShoppingCart,
+                            contentDescription = "Cart",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
 
-                when (syncState) {
-                    is CatalogSyncState.Loading -> {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize()
+                    if (cartItemCount > 0) {
+                        Surface(
+                            shape = CircleShape,
+                            color = RfmRed,
+                            modifier = Modifier
+                                .size(20.dp)
+                                .align(Alignment.TopEnd)
+                                .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
                         ) {
-                            RfmLoadingIndicator(
-                                size = 48f,
-                                strokeWidth = 4f,
-                                text = (syncState as CatalogSyncState.Loading).message,
-                                animated = true
+                            Text(
+                                text = if (cartItemCount > 99) "99+" else cartItemCount.toString(),
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp
+                                ),
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(2.dp)
                             )
                         }
                     }
-                    is CatalogSyncState.Error -> {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Error,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(48.dp)
-                                )
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        )
 
-                                Spacer(modifier = Modifier.height(16.dp))
+        // Subtle divider for better separation
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        )
+    }
+}
 
-                                Text(
-                                    text = (syncState as CatalogSyncState.Error).message,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    textAlign = TextAlign.Center,
-                                    color = MaterialTheme.colorScheme.error
-                                )
+/**
+ * Enhanced search section with horizontal categories
+ */
+@Composable
+private fun SearchSection(
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit,
+    selectedCategoryId: String?,
+    categories: List<com.rfm.quickpos.data.remote.models.Category>,
+    onCategorySelected: (String?) -> Unit
+) {
+    Column {
+        // Modern search bar
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            RfmSearchBar(
+                query = searchQuery,
+                onQueryChange = onSearchQueryChange,
+                onSearch = { /* Perform search */ },
+                placeholder = "Search products, SKU, or barcode",
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
 
-                                Spacer(modifier = Modifier.height(24.dp))
-
-                                // Fixed: Implement proper retry function
-                                RfmPrimaryButton(
-                                    text = "Retry",
-                                    onClick = {
-                                        coroutineScope.launch {
-                                            refreshAllData()
-                                        }
-                                    },
-                                    leadingIcon = Icons.Default.Refresh
-                                )
-                            }
-                        }
+        // Categories with sticky scroll
+        if (categories.isNotEmpty()) {
+            Card(
+                shape = RectangleShape,
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // All category chip with modern design
+                    item {
+                        EnhancedCategoryChip(
+                            text = "All",
+                            selected = selectedCategoryId == null,
+                            isReset = selectedCategoryId != null,
+                            onClick = { onCategorySelected(null) }
+                        )
                     }
-                    else -> {
-                        if (filteredItems.isEmpty()) {
-                            Box(
-                                contentAlignment = Alignment.Center,
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.padding(16.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Search,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(48.dp)
-                                    )
 
-                                    Spacer(modifier = Modifier.height(16.dp))
-
-                                    Text(
-                                        text = "No products found",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        textAlign = TextAlign.Center
-                                    )
-
-                                    Text(
-                                        text = "Try adjusting your search or category filters",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        textAlign = TextAlign.Center,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(top = 4.dp)
-                                    )
-                                }
-                            }
-                        } else {
-                            // Categories row
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp)
-                                    .shadow(elevation = 1.dp)
-                                    .background(MaterialTheme.colorScheme.surface)
-                                    .padding(vertical = 8.dp)
-                            ) {
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = 16.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    // All category option
-                                    item {
-                                        RfmCategoryChip(
-                                            text = "All",
-                                            selected = selectedCategoryId.value == null,
-                                            onClick = { selectedCategoryId.value = null }
-                                        )
-                                    }
-
-                                    // Categories from data
-                                    items(categories) { category ->
-                                        RfmCategoryChip(
-                                            text = category.name,
-                                            selected = selectedCategoryId.value == category.id,
-                                            onClick = { selectedCategoryId.value = category.id }
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Products grid
-                            LazyVerticalGrid(
-                                columns = GridCells.Adaptive(minSize = 160.dp),
-                                contentPadding = PaddingValues(16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                items(filteredItems) { item ->
-                                    BusinessTypeAwareProductCard(
-                                        item = item,
-                                        businessTypeConfig = businessTypeConfig,
-                                        onClick = {
-                                            // Check if item has variations
-                                            val hasVariations = item.settings?.variations?.isNotEmpty() == true
-                                            val hasModifiers = item.modifierGroupIds?.isNotEmpty() == true
-
-                                            if (hasVariations || hasModifiers) {
-                                                // Navigate to variations screen
-                                                onProductClick(item)
-                                            } else {
-                                                // Add directly to cart
-                                                onAddToCart(item)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
+                    // Category chips
+                    items(categories) { category ->
+                        EnhancedCategoryChip(
+                            text = category.name,
+                            selected = selectedCategoryId == category.id,
+                            onClick = { onCategorySelected(category.id) }
+                        )
                     }
                 }
             }
         }
     }
 }
+
+/**
+ * Enhanced category chip with animations
+ */
+@Composable
+private fun EnhancedCategoryChip(
+    text: String,
+    selected: Boolean,
+    isReset: Boolean = false,
+    onClick: () -> Unit
+) {
+    val backgroundColor = when {
+        selected -> MaterialTheme.colorScheme.primary
+        isReset -> MaterialTheme.colorScheme.primaryContainer
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+
+    val contentColor = when {
+        selected -> MaterialTheme.colorScheme.onPrimary
+        isReset -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = backgroundColor,
+        contentColor = contentColor,
+        shadowElevation = if (selected) 4.dp else 0.dp,
+        modifier = Modifier
+            .animateContentSize()
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            if (isReset) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = contentColor
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+            )
+        }
+    }
+}
+
+/**
+ * Loading content with modern design
+ */
+@Composable
+private fun LoadingContent(message: String) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            CircularProgressIndicator(
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(48.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyLarge,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/**
+ * Error content with retry option
+ */
+@Composable
+private fun ErrorContent(
+    message: String,
+    onRetry: () -> Unit
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error,
+                modifier = Modifier.size(64.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Oops! Something went wrong",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            RfmPrimaryButton(
+                text = "Try Again",
+                onClick = onRetry,
+                leadingIcon = Icons.Default.Refresh
+            )
+        }
+    }
+}
+
+/**
+ * Empty state content with helpful actions
+ */
+@Composable
+private fun EmptyStateContent(
+    hasCategory: Boolean,
+    onResetFilters: () -> Unit
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(64.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "No products found",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                text = "Try adjusting your search or category filters",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+
+            if (hasCategory) {
+                Spacer(modifier = Modifier.height(24.dp))
+
+                RfmPrimaryButton(
+                    text = "Show All Products",
+                    onClick = onResetFilters,
+                    leadingIcon = Icons.Default.Refresh
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Products grid content
+ */
+@Composable
+private fun ProductsContent(
+    items: List<Item>,
+    businessTypeConfig: com.rfm.quickpos.data.remote.models.BusinessTypeConfig?,
+    onProductClick: (Item) -> Unit,
+    onAddToCart: (Item) -> Unit
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 160.dp),
+        contentPadding = PaddingValues(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(items) { item ->
+            BusinessTypeAwareProductCard(
+                item = item,
+                businessTypeConfig = businessTypeConfig,
+                onClick = {
+                    onProductClick(item)
+                }
+            )
+        }
+    }
+}
+
+/**
+ * Modern floating action buttons
+ */
+@Composable
+private fun FloatingActionButtons(
+    onScanBarcode: () -> Unit,
+    onAddCustomItem: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        // Scan barcode FAB
+        FloatingActionButton(
+            onClick = onScanBarcode,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            modifier = Modifier.shadow(elevation = 6.dp, shape = CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.QrCodeScanner,
+                contentDescription = "Scan Barcode",
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        // Add custom item FAB
+        ExtendedFloatingActionButton(
+            onClick = onAddCustomItem,
+            containerColor = RfmRed,
+            contentColor = Color.White,
+            modifier = Modifier.shadow(elevation = 6.dp, shape = CircleShape)
+        ) {
+            Icon(
+                imageVector = Icons.Default.QrCode,
+                contentDescription = "Add Custom Item",
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Custom",
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+

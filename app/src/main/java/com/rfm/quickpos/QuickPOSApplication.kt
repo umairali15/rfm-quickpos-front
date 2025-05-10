@@ -11,6 +11,7 @@ import com.rfm.quickpos.data.repository.AuthRepository
 import com.rfm.quickpos.data.repository.CatalogRepository
 import com.rfm.quickpos.data.repository.DeviceRepository
 import com.rfm.quickpos.domain.manager.ConnectivityManager
+import com.rfm.quickpos.presentation.features.cart.CartRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -28,6 +29,7 @@ class QuickPOSApplication : Application() {
     lateinit var authRepository: AuthRepository
     lateinit var connectivityManager: ConnectivityManager
     lateinit var catalogRepository: CatalogRepository
+    lateinit var cartRepository: CartRepository
 
     override fun onCreate() {
         super.onCreate()
@@ -47,6 +49,7 @@ class QuickPOSApplication : Application() {
 
         // Initialize connectivity manager
         connectivityManager = ConnectivityManager(this)
+        cartRepository = CartRepository()
 
         // Attempt to load initial configuration
         applicationScope.launch {
