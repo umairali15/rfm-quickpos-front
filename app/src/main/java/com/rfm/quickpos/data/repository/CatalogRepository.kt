@@ -78,24 +78,30 @@ class CatalogRepository(
             return false
         }
 
-        // First make sure we have company info
-        if (_companyInfo.value == null) {
-            Log.d(TAG, "Company info missing, fetching...")
-            val companyInfo = fetchCompanyInfo()
-            if (companyInfo == null) {
-                Log.e(TAG, "Failed to fetch company info during initialization")
-                return false
+        try {
+            // First make sure we have company info
+            if (_companyInfo.value == null) {
+                Log.d(TAG, "Company info missing, fetching...")
+                val companyInfo = fetchCompanyInfo()
+                if (companyInfo == null) {
+                    Log.e(TAG, "Failed to fetch company info during initialization")
+                    return false
+                }
             }
-        }
 
-        // Check if we need to sync or have valid cache
-        if (!isCatalogCacheValid() || _categories.value.isEmpty() || _items.value.isEmpty()) {
-            Log.d(TAG, "Catalog data missing or outdated, syncing...")
-            return syncCatalogData(forceRefresh = true)
-        } else {
-            Log.d(TAG, "Using cached catalog data")
-            _syncState.value = CatalogSyncState.Success
-            return true
+            // Check if we need to sync or have valid cache
+            if (!isCatalogCacheValid() || _categories.value.isEmpty() || _items.value.isEmpty()) {
+                Log.d(TAG, "Catalog data missing or outdated, syncing...")
+                return syncCatalogData(forceRefresh = true)
+            } else {
+                Log.d(TAG, "Using cached catalog data")
+                _syncState.value = CatalogSyncState.Success
+                return true
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during initialization", e)
+            _syncState.value = CatalogSyncState.Error("Failed to initialize catalog: ${e.message}")
+            return false
         }
     }
 
@@ -112,13 +118,13 @@ class CatalogRepository(
                     val catalogCache = gson.fromJson(catalogCacheJson, CatalogCache::class.java)
 
                     if (catalogCache != null) {
-                        _categories.value = catalogCache.categories
-                        _items.value = catalogCache.items
-                        _modifierGroups.value = catalogCache.modifierGroups
+                        _categories.value = catalogCache.categories ?: emptyList()
+                        _items.value = catalogCache.items ?: emptyList()
+                        _modifierGroups.value = catalogCache.modifierGroups ?: emptyList()
                         lastSyncTime = catalogCache.timestamp
 
-                        Log.d(TAG, "Loaded cached catalog data. Categories: ${catalogCache.categories.size}, " +
-                                "Items: ${catalogCache.items.size}, Timestamp: ${Date(catalogCache.timestamp)}")
+                        Log.d(TAG, "Loaded cached catalog data. Categories: ${_categories.value.size}, " +
+                                "Items: ${_items.value.size}, Timestamp: ${Date(catalogCache.timestamp)}")
                     }
                 }
             } else {
@@ -344,35 +350,57 @@ class CatalogRepository(
         _syncState.value = CatalogSyncState.Loading("Syncing catalog data")
 
         return try {
-            // Fetch categories
+            // Fetch categories with null safety
+            Log.d(TAG, "Fetching categories...")
             val categoriesResponse = apiService.getCategories()
+
+            Log.d(TAG, "Categories response - success: ${categoriesResponse.success}, " +
+                    "categories: ${categoriesResponse.categories?.size ?: "null"}")
+
             if (!categoriesResponse.success) {
                 _syncState.value = CatalogSyncState.Error("Failed to fetch categories: ${categoriesResponse.error}")
                 return false
             }
-            _categories.value = categoriesResponse.categories
-            Log.d(TAG, "Synced ${categoriesResponse.categories.size} categories")
 
-            // Fetch items
+            // Handle null categories list
+            _categories.value = categoriesResponse.categories ?: emptyList()
+            Log.d(TAG, "Synced ${_categories.value.size} categories")
+
+            // Fetch items with null safety
+            Log.d(TAG, "Fetching items...")
             val itemsResponse = apiService.getItems()
+
+            Log.d(TAG, "Items response - success: ${itemsResponse.success}, " +
+                    "items: ${itemsResponse.items?.size ?: "null"}")
+
             if (!itemsResponse.success) {
                 _syncState.value = CatalogSyncState.Error("Failed to fetch items: ${itemsResponse.error}")
                 return false
             }
-            _items.value = itemsResponse.items
-            Log.d(TAG, "Synced ${itemsResponse.items.size} items")
+
+            // Handle null items list
+            _items.value = itemsResponse.items ?: emptyList()
+            Log.d(TAG, "Synced ${_items.value.size} items")
 
             // Fetch modifier groups based on business type
             if (_businessTypeConfig.value?.supportsModifiers == true) {
+                Log.d(TAG, "Fetching modifier groups...")
                 val modifiersResponse = apiService.getModifierGroups()
+
+                Log.d(TAG, "Modifiers response - success: ${modifiersResponse.success}, " +
+                        "modifierGroups: ${modifiersResponse.modifierGroups?.size ?: "null"}")
+
                 if (!modifiersResponse.success) {
                     _syncState.value = CatalogSyncState.Error("Failed to fetch modifiers: ${modifiersResponse.error}")
                     return false
                 }
-                _modifierGroups.value = modifiersResponse.modifierGroups
-                Log.d(TAG, "Synced ${modifiersResponse.modifierGroups.size} modifier groups")
+
+                // Handle null modifier groups list
+                _modifierGroups.value = modifiersResponse.modifierGroups ?: emptyList()
+                Log.d(TAG, "Synced ${_modifierGroups.value.size} modifier groups")
             } else {
                 Log.d(TAG, "Business type does not support modifiers, skipping modifier sync")
+                _modifierGroups.value = emptyList()
             }
 
             // Save to cache
@@ -455,9 +483,9 @@ class CatalogRepository(
  * Data class for catalog cache
  */
 data class CatalogCache(
-    val categories: List<Category>,
-    val items: List<Item>,
-    val modifierGroups: List<ModifierGroup>,
+    val categories: List<Category>?,
+    val items: List<Item>?,
+    val modifierGroups: List<ModifierGroup>?,
     val timestamp: Long
 )
 
