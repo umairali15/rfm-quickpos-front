@@ -40,7 +40,6 @@ import com.rfm.quickpos.domain.model.UiMode
 import com.rfm.quickpos.presentation.common.components.ConnectivityBanner
 import com.rfm.quickpos.presentation.common.components.FeatureFlagProvider
 import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
-import com.rfm.quickpos.presentation.features.cart.CartRepository
 import com.rfm.quickpos.presentation.features.setup.DevicePairingScreen
 import com.rfm.quickpos.presentation.features.setup.DevicePairingViewModel
 import com.rfm.quickpos.presentation.features.splash.SplashScreen
@@ -60,7 +59,6 @@ class MainActivity : ComponentActivity() {
     private lateinit var deviceRepository: DeviceRepository
     private lateinit var authRepository: AuthRepository
     private lateinit var connectivityManager: ConnectivityManager
-    private lateinit var cartRepository: CartRepository
 
     // App state
     private val _appState = MutableStateFlow<AppState>(AppState.Initializing)
@@ -76,8 +74,6 @@ class MainActivity : ComponentActivity() {
 
         // Initialize ConnectivityManager
         connectivityManager = ConnectivityManager(this)
-        cartRepository = (application as QuickPOSApplication).cartRepository
-
 
         // Start monitoring connectivity
         lifecycleScope.launch {
@@ -88,8 +84,6 @@ class MainActivity : ComponentActivity() {
 
         // Initialize app state
         initializeAppState()
-
-
 
         // Monitor auth state changes
         lifecycleScope.launch {

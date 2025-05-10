@@ -56,7 +56,7 @@ class CartRepository {
             price = customItem.price,
             quantity = 1,
             modifiers = emptyList(),
-            notes = customItem.notes
+            notes = customItem.notes.toString()
         )
 
         addCartItem(cartItem)
@@ -135,13 +135,3 @@ class CartRepository {
     }
 }
 
-/**
- * Add this to your QuickPOSApplication.kt
- */
-// In QuickPOSApplication class, add:
-// lateinit var cartRepository: CartRepository
-
-// In onCreate(), after other repositories:
-// cartRepository = CartRepository()
-
-// Then update in MainActivity.kt where you pass the CartRepository to screens

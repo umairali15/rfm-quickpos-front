@@ -39,6 +39,8 @@ class QuickPOSApplication : Application() {
         // Initialize secure credential store
         secureCredentialStore = SecureCredentialStore(this)
 
+        cartRepository = CartRepository()
+
         // Initialize API service
         apiService = RetrofitClient.create(secureCredentialStore)
 
@@ -49,7 +51,6 @@ class QuickPOSApplication : Application() {
 
         // Initialize connectivity manager
         connectivityManager = ConnectivityManager(this)
-        cartRepository = CartRepository()
 
         // Attempt to load initial configuration
         applicationScope.launch {

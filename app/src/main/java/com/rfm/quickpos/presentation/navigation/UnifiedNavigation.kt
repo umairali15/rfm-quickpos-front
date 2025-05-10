@@ -1,10 +1,7 @@
 package com.rfm.quickpos.presentation.navigation
 
-import android.util.Log
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarDuration
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.*
@@ -30,7 +27,6 @@ import com.rfm.quickpos.presentation.features.history.*
 import com.rfm.quickpos.presentation.features.kiosk.*
 import com.rfm.quickpos.presentation.features.payment.*
 import com.rfm.quickpos.presentation.common.models.ActionCardData
-import kotlinx.coroutines.launch
 import java.util.Date
 
 @Composable
@@ -52,10 +48,6 @@ fun UnifiedNavigation(
 
     // Sample data for screens
     val sampleData = getSampleData()
-
-    // For snackbar host
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     // Debug Menu dialog
     if (showDebugMenu) {
@@ -145,6 +137,7 @@ fun UnifiedNavigation(
                     // Simulate network request
                     android.os.Handler().postDelayed({
                         // Check if required fields are filled (this would be a real API call)
+                        // UPDATE THIS PART - use deviceAlias and branchId instead of merchantId and terminalId
                         if (pairingState.pairingInfo.deviceAlias.isNotBlank() &&
                             pairingState.pairingInfo.branchId.isNotBlank()) {
 
@@ -154,6 +147,8 @@ fun UnifiedNavigation(
                                 status = PairingStatus.SUCCESS,
                                 isPaired = true
                             )
+
+                            // Here you would actually store the pairing info to persistent storage
 
                             navController.navigate(AuthScreen.PinLogin.route) {
                                 popUpTo(Screen.DevicePairing.route) { inclusive = true }
@@ -240,48 +235,32 @@ fun UnifiedNavigation(
                 }
             }
         }
-
-        // FIXED Catalog screen with proper navigation to ItemDetail
         composable(Screen.Catalog.route) {
             if (uiMode == UiMode.CASHIER) {
-                val context = LocalContext.current
-                val application = context.applicationContext as QuickPOSApplication
-                val catalogRepository = application.catalogRepository
+                val catalogRepository =
+                    (LocalContext.current.applicationContext as QuickPOSApplication).catalogRepository
 
                 BusinessTypeCatalogScreen(
                     catalogRepository = catalogRepository,
                     onBackClick = { navController.popBackStack() },
                     onProductClick = { item ->
-                        // FIXED: Navigate to item detail with proper navigation
-                        try {
-                            navController.navigate(Screen.ItemDetail.createRoute(item.id))
-                        } catch (e: Exception) {
-                            Log.e("Navigation", "Failed to navigate to item detail", e)
-                        }
+                        // FIXED: Navigate to item detail with the correct item ID
+                        navController.navigate(Screen.ItemDetail.createRoute(item.id))
                     },
                     onAddToCart = { item ->
-                        // Add item directly to cart
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = "${item.name} added to cart",
-                                duration = SnackbarDuration.Short
-                            )
-                        }
+                        // Add to cart logic
+                        // TODO: Implement cart repository integration
                     },
                     onScanBarcode = {
+                        // Handle barcode scanning
                         // TODO: Implement barcode scanning
-                        scope.launch {
-                            snackbarHostState.showSnackbar(
-                                message = "Barcode scanning coming soon",
-                                duration = SnackbarDuration.Short
-                            )
-                        }
                     },
                     onCartClick = {
                         navController.navigate(Screen.Cart.route)
                     },
                     onAddCustomItem = {
-                        // This is handled within the screen using bottom sheet
+                        // This is now handled within the screen using bottom sheet
+                        // The bottom sheet opens automatically when the FAB is clicked
                     }
                 )
             } else {
@@ -423,7 +402,6 @@ fun UnifiedNavigation(
             )
         }
 
-        // FIXED ItemDetail screen with improved navigation handling
         composable(
             route = Screen.ItemDetail.route,
             arguments = listOf(navArgument("productId") { type = NavType.StringType })
