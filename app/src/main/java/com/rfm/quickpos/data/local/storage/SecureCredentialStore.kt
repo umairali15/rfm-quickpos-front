@@ -83,6 +83,15 @@ class SecureCredentialStore(context: Context) {
         return preferences.getString(KEY_COMPANY_SCHEMA, null)
     }
 
+    // NEW METHODS FOR JWT DATA
+    fun getCompanyId(): String? {
+        return preferences.getString(KEY_COMPANY_ID, null)
+    }
+
+    fun getBusinessType(): String? {
+        return preferences.getString(KEY_BUSINESS_TYPE, null)
+    }
+
     // Authentication
     fun saveAuthToken(token: String) {
         preferences.edit()
@@ -156,10 +165,6 @@ class SecureCredentialStore(context: Context) {
             .putString(KEY_COMPANY_SCHEMA, schema)
             .apply()
         Log.d(TAG, "Company schema saved: $schema")
-    }
-
-    fun getBusinessType(): String? {
-        return preferences.getString(KEY_BUSINESS_TYPE, null)
     }
 
     // User Data

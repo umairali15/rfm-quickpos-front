@@ -8,17 +8,25 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -136,162 +144,169 @@ class MainActivity : ComponentActivity() {
         // Log state changes for debugging
         LaunchedEffect(currentAppState) {
             Log.d(TAG, "App state changed to: $currentAppState")
+            Log.d(TAG, "Current UI Mode: $uiMode")
         }
 
-        // Provide feature flags based on UI mode
-        FeatureFlagProvider(uiMode = uiMode) {
-            // A surface container using the 'background' color from the theme
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background
-            ) {
-                when (currentAppState) {
-                    AppState.Initializing -> {
-                        // Show splash screen during initialization
-                        SplashScreen(
-                            onInitializationComplete = { /* Controlled by state machine */ }
-                        )
-                    }
-                    AppState.NeedsDeviceRegistration -> {
-                        DevicePairingScreenWithNavigation()
-                    }
-                    AppState.NeedsAuthentication -> {
+        // Add debugging box to show state
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Add a debug overlay in debug builds
+            if (BuildConfig.DEBUG) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .background(Color.Black.copy(alpha = 0.7f))
+                        .padding(8.dp)
+                ) {
+                    Text(
+                        text = "State: $currentAppState\nMode: $uiMode",
+                        color = Color.White,
+                        fontSize = 12.sp
+                    )
+                }
+            }
 
-                    }
-
-                    AppState.Ready -> {
-                        // Main app content with connectivity banner
-                        Column {
-                            // Global connectivity banner
-                            ConnectivityBanner(
-                                status = connectivityStatus,
-                                pendingSyncCount = pendingSyncCount,
-                                onRetryClick = {
-                                    lifecycleScope.launch {
-                                        connectivityManager.retryPendingSync()
-                                    }
-                                }
-                            )
-
-                            // Create the navigation controller
-                            val navController = rememberNavController()
-
-                            // Trigger catalog sync when app is ready
-                            val catalogRepository = (application as QuickPOSApplication).catalogRepository
-
-                            // Remember if we've already triggered sync for this session
-                            val hasTriggeredSync = remember { mutableStateOf(false) }
-
-                            LaunchedEffect(Unit) {
-                                if (!hasTriggeredSync.value) {
-                                    hasTriggeredSync.value = true
-
-                                    launch {
-                                        try {
-                                            // First get company info (if not already cached)
-                                            if (catalogRepository.companyInfo.value == null) {
-                                                Log.d(TAG, "Fetching company info...")
-                                                catalogRepository.fetchCompanyInfo()
-                                            }
-
-                                            // Check if we need to sync catalog data
-                                            if (catalogRepository.categories.value.isEmpty() ||
-                                                catalogRepository.items.value.isEmpty()) {
-                                                Log.d(TAG, "Syncing catalog data...")
-                                                catalogRepository.syncCatalogData()
-                                            } else {
-                                                Log.d(TAG, "Catalog data already available")
-                                            }
-                                        } catch (e: Exception) {
-                                            Log.e(TAG, "Error during catalog sync", e)
-                                        }
-                                    }
-                                }
-                            }
-
-                            // Use UnifiedNavigation with PIN login as the start
-                            UnifiedNavigation(
-                                navController = navController,
-                                startDestination = AuthScreen.PinLogin.route,
-                                uiMode = uiMode,
-                                onChangeMode = { newMode ->
-                                    lifecycleScope.launch {
-                                        deviceRepository.updateUiMode(newMode)
-                                    }
-                                },
-                                onLoginSuccess = { userId ->
-                                    Log.d(TAG, "Login success callback: $userId")
-                                    // Check device registration
-                                    lifecycleScope.launch {
-                                        if (!deviceRepository.isDeviceRegistered()) {
-                                            Log.d(TAG, "Login successful, but device needs registration")
-                                            _appState.value = AppState.NeedsDeviceRegistration
-                                        } else {
-                                            Log.d(TAG, "Login successful, device already registered, moving to Ready")
-                                            _appState.value = AppState.Ready
-                                        }
-                                    }
-                                },
-                                // Updated MainActivity logout handling
-
-                                onLogout = {
-                                    Log.d(TAG, "Logout requested")
-
-                                    lifecycleScope.launch {
-                                        // Clear catalog cache on logout
-                                        catalogRepository.clearCache()
-
-                                        // Logout user
-                                        authRepository.logout()
-
-                                        // Reset app state
-                                        _appState.value = AppState.NeedsAuthentication
-                                    }
-                                },
-                                authRepository = authRepository,
-                                deviceRepository = deviceRepository
+            // Provide feature flags based on UI mode
+            FeatureFlagProvider(uiMode = uiMode) {
+                // A surface container using the 'background' color from the theme
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    when (currentAppState) {
+                        AppState.Initializing -> {
+                            Log.d(TAG, "Rendering Splash Screen")
+                            SplashScreen(
+                                onInitializationComplete = { /* Controlled by state machine */ }
                             )
                         }
-                    }
-                    AppState.Ready -> {
-                        // Main app content with connectivity banner
-                        Column {
-                            // Global connectivity banner
-                            ConnectivityBanner(
-                                status = connectivityStatus,
-                                pendingSyncCount = pendingSyncCount,
-                                onRetryClick = {
-                                    lifecycleScope.launch {
-                                        connectivityManager.retryPendingSync()
+                        AppState.NeedsDeviceRegistration -> {
+                            Log.d(TAG, "Rendering Device Pairing Screen")
+                            DevicePairingScreenWithNavigation()
+                        }
+                        AppState.NeedsAuthentication -> {
+                            Log.d(TAG, "Rendering Authentication Screen")
+                            // Main app content with connectivity banner and PIN login
+                            Column {
+                                // Global connectivity banner
+                                ConnectivityBanner(
+                                    status = connectivityStatus,
+                                    pendingSyncCount = pendingSyncCount,
+                                    onRetryClick = {
+                                        lifecycleScope.launch {
+                                            connectivityManager.retryPendingSync()
+                                        }
+                                    }
+                                )
+
+                                // Create the navigation controller
+                                val navController = rememberNavController()
+
+                                Log.d(TAG, "Creating UnifiedNavigation with PIN login start")
+                                // Use UnifiedNavigation with PIN login as the start
+                                UnifiedNavigation(
+                                    navController = navController,
+                                    startDestination = AuthScreen.PinLogin.route,
+                                    uiMode = uiMode,
+                                    onChangeMode = { newMode ->
+                                        lifecycleScope.launch {
+                                            deviceRepository.updateUiMode(newMode)
+                                        }
+                                    },
+                                    onLoginSuccess = { userId ->
+                                        Log.d(TAG, "Login success callback: $userId")
+                                        // Check device registration
+                                        lifecycleScope.launch {
+                                            if (!deviceRepository.isDeviceRegistered()) {
+                                                Log.d(TAG, "Login successful, but device needs registration")
+                                                _appState.value = AppState.NeedsDeviceRegistration
+                                            } else {
+                                                Log.d(TAG, "Login successful, device already registered, moving to Ready")
+                                                _appState.value = AppState.Ready
+                                            }
+                                        }
+                                    },
+                                    onLogout = {
+                                        Log.d(TAG, "Logout requested")
+                                        // When user logs out, go back to auth screen
+                                        lifecycleScope.launch {
+                                            authRepository.logout()
+                                            _appState.value = AppState.NeedsAuthentication
+                                        }
+                                    },
+                                    authRepository = authRepository,
+                                    deviceRepository = deviceRepository
+                                )
+                            }
+                        }
+                        AppState.Ready -> {
+                            // Main app content with connectivity banner
+                            Column {
+                                // Global connectivity banner
+                                ConnectivityBanner(
+                                    status = connectivityStatus,
+                                    pendingSyncCount = pendingSyncCount,
+                                    onRetryClick = {
+                                        lifecycleScope.launch {
+                                            connectivityManager.retryPendingSync()
+                                        }
+                                    }
+                                )
+
+                                // Create the navigation controller
+                                val navController = rememberNavController()
+
+                                // Get the catalog repository
+                                val catalogRepository = (application as QuickPOSApplication).catalogRepository
+
+                                // Initialize catalog data when app becomes ready
+                                LaunchedEffect(Unit) {
+                                    Log.d(TAG, "App ready, initializing catalog data...")
+
+                                    try {
+                                        // Initialize catalog (this handles company info and catalog sync)
+                                        val success = catalogRepository.initialize()
+
+                                        if (!success) {
+                                            Log.e(TAG, "Failed to initialize catalog data")
+                                            // You might want to show an error dialog here
+                                        } else {
+                                            Log.d(TAG, "Catalog initialized successfully")
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error initializing catalog", e)
                                     }
                                 }
-                            )
 
-                            // Create the navigation controller
-                            val navController = rememberNavController()
+                                // Use UnifiedNavigation with the appropriate start destination
+                                UnifiedNavigation(
+                                    navController = navController,
+                                    // Skip to the home screen since we're already authenticated
+                                    startDestination = if (uiMode == UiMode.CASHIER)
+                                        "dashboard" else "kiosk_attract",
+                                    uiMode = uiMode,
+                                    onChangeMode = { newMode ->
+                                        lifecycleScope.launch {
+                                            deviceRepository.updateUiMode(newMode)
+                                        }
+                                    },
+                                    onLogout = {
+                                        Log.d(TAG, "Logout requested")
 
-                            // Use UnifiedNavigation with the appropriate start destination
-                            UnifiedNavigation(
-                                navController = navController,
-                                // Skip to the home screen since we're already authenticated
-                                startDestination = if (uiMode == UiMode.CASHIER)
-                                    "dashboard" else "kiosk_attract",
-                                uiMode = uiMode,
-                                onChangeMode = { newMode ->
-                                    lifecycleScope.launch {
-                                        deviceRepository.updateUiMode(newMode)
-                                    }
-                                },
-                                onLogout = {
-                                    Log.d(TAG, "Logout requested")
-                                    // When user logs out, go back to auth screen
-                                    lifecycleScope.launch {
-                                        authRepository.logout()
-                                        _appState.value = AppState.NeedsAuthentication
-                                    }
-                                },
-                                authRepository = authRepository
-                            )
+                                        lifecycleScope.launch {
+                                            // Clear catalog cache on logout
+                                            catalogRepository.clearCache()
+
+                                            // Logout user
+                                            authRepository.logout()
+
+                                            // Reset app state
+                                            _appState.value = AppState.NeedsAuthentication
+                                        }
+                                    },
+                                    authRepository = authRepository,
+                                    deviceRepository = deviceRepository
+                                )
+                            }
                         }
                     }
                 }

@@ -1,4 +1,4 @@
-// Updated CatalogRepository.kt
+// app/src/main/java/com/rfm/quickpos/data/repository/CatalogRepository.kt
 
 package com.rfm.quickpos.data.repository
 
@@ -65,6 +65,38 @@ class CatalogRepository(
     init {
         // Load cached data on init
         loadCachedData()
+    }
+
+    /**
+     * Initialize catalog data - this should be called when app is ready
+     */
+    suspend fun initialize(): Boolean {
+        Log.d(TAG, "Initializing catalog...")
+
+        if (_syncState.value is CatalogSyncState.Loading) {
+            Log.d(TAG, "Already loading, skipping initialization")
+            return false
+        }
+
+        // First make sure we have company info
+        if (_companyInfo.value == null) {
+            Log.d(TAG, "Company info missing, fetching...")
+            val companyInfo = fetchCompanyInfo()
+            if (companyInfo == null) {
+                Log.e(TAG, "Failed to fetch company info during initialization")
+                return false
+            }
+        }
+
+        // Check if we need to sync or have valid cache
+        if (!isCatalogCacheValid() || _categories.value.isEmpty() || _items.value.isEmpty()) {
+            Log.d(TAG, "Catalog data missing or outdated, syncing...")
+            return syncCatalogData(forceRefresh = true)
+        } else {
+            Log.d(TAG, "Using cached catalog data")
+            _syncState.value = CatalogSyncState.Success
+            return true
+        }
     }
 
     /**
@@ -185,10 +217,54 @@ class CatalogRepository(
      * Fetch company and business type information
      */
     suspend fun fetchCompanyInfo(): CompanyInfo? {
+        if (_syncState.value is CatalogSyncState.Loading) {
+            Log.d(TAG, "Already loading, skipping company info fetch")
+            return _companyInfo.value
+        }
+
+        // First check if we already have company info from JWT
+        val companyId = credentialStore.getCompanyId()
+        val companySchema = credentialStore.getCompanySchema()
+        val businessType = credentialStore.getBusinessType()
+
+        if (companyId != null && companySchema != null && businessType != null) {
+            Log.d(TAG, "Using company info from JWT")
+
+            val companyInfo = CompanyInfo(
+                id = companyId,
+                name = "", // You can get this from another source or set a default
+                taxNumber = null,
+                contactEmail = null,
+                contactPhone = null,
+                logoUrl = null,
+                businessType = businessType,
+                schemaName = companySchema
+            )
+
+            // Set business type config based on business type
+            val businessConfig = createBusinessTypeConfig(businessType)
+
+            _companyInfo.value = companyInfo
+            _businessTypeConfig.value = businessConfig
+
+            // Save to cache
+            saveCompanyInfoCache()
+
+            Log.d(TAG, "Company info from JWT: type=$businessType, schema=$companySchema")
+            _syncState.value = CatalogSyncState.Success
+            return companyInfo
+        }
+
+        // If we don't have JWT data, make API call
         _syncState.value = CatalogSyncState.Loading("Fetching company info")
 
         return try {
+            Log.d(TAG, "Making API call to fetch company info...")
+
+            // Use the correct endpoint based on available data
             val response = apiService.getCompanyInfo()
+
+            Log.d(TAG, "Company info response received: success=${response.success}")
 
             if (response.success) {
                 _companyInfo.value = response.companyInfo
@@ -211,6 +287,45 @@ class CatalogRepository(
             Log.e(TAG, "Error fetching company info", e)
             _syncState.value = CatalogSyncState.Error("Failed to fetch company information: ${e.message}")
             null
+        }
+    }
+
+    /**
+     * Create business type configuration based on business type
+     */
+    private fun createBusinessTypeConfig(businessType: String): BusinessTypeConfig {
+        return when (businessType.lowercase()) {
+            "restaurant" -> BusinessTypeConfig(
+                name = "restaurant",
+                features = listOf("menu_management", "table_management", "modifiers"),
+                supportsModifiers = true,
+                supportsTables = true,
+                supportsInventory = false,
+                supportsTimeBasedPricing = false,
+                requiresCustomer = false
+            )
+            "retail" -> BusinessTypeConfig(
+                name = "retail",
+                features = listOf("inventory_management", "barcode_scanning", "variations"),
+                supportsModifiers = false,
+                supportsTables = false,
+                supportsInventory = true,
+                supportsTimeBasedPricing = false,
+                requiresCustomer = false
+            )
+            "service" -> BusinessTypeConfig(
+                name = "service",
+                features = listOf("time_based_pricing", "appointments", "service_levels"),
+                supportsModifiers = false,
+                supportsTables = false,
+                supportsInventory = false,
+                supportsTimeBasedPricing = true,
+                requiresCustomer = true
+            )
+            else -> BusinessTypeConfig(
+                name = businessType,
+                features = emptyList()
+            )
         }
     }
 
@@ -262,6 +377,7 @@ class CatalogRepository(
 
             // Save to cache
             saveCatalogCache()
+            lastSyncTime = System.currentTimeMillis()
 
             _syncState.value = CatalogSyncState.Success
             Log.d(TAG, "Catalog sync completed successfully. Categories: ${_categories.value.size}, " +
