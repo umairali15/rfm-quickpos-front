@@ -559,7 +559,38 @@ fun UnifiedNavigation(
                     KioskCatalogScreen(
                         onBackClick = { navController.popBackStack() },
                         onCartClick = { navController.navigate(KioskScreen.Cart.route) },
-                        onProductClick = { /* Handle product selection */ },
+                        onProductClick = { itemId ->
+                            // Navigate to item detail
+                            navController.navigate("kiosk_item_detail/$itemId")
+                        },
+                        modifier = inactivityModifier
+                    )
+                }
+            } else {
+                LaunchedEffect(Unit) {
+                    navigateToHomeScreen(navController, uiMode)
+                }
+            }
+        }
+
+        composable(
+            route = "kiosk_item_detail/{itemId}",
+            arguments = listOf(navArgument("itemId") { type = NavType.StringType })
+        ) {
+            if (uiMode == UiMode.KIOSK) {
+                val itemId = it.arguments?.getString("itemId") ?: ""
+
+                KioskInactivityDetector(
+                    onTimeout = {
+                        navController.navigate(KioskScreen.Attract.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    },
+                    timeoutMillis = 180_000 // 3 minutes for item detail
+                ) { inactivityModifier ->
+                    KioskItemDetailScreen(
+                        itemId = itemId,
+                        onClose = { navController.popBackStack() },
                         modifier = inactivityModifier
                     )
                 }

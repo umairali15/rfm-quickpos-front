@@ -388,7 +388,7 @@ private fun QuantitySection(
 
 // Include the helper composables here
 @Composable
-private fun VariationsSection(
+internal fun VariationsSection(
     variations: List<Variation>,
     selectedVariations: Map<String, VariationOption>,
     onVariationSelected: (String, VariationOption) -> Unit,
@@ -558,7 +558,7 @@ private fun VariationOptionChip(
  * Display business type specific item information
  */
 @Composable
-private fun BusinessTypeItemInfo(
+internal fun BusinessTypeItemInfo(
     item: Item,
     businessTypeConfig: BusinessTypeConfig?
 ) {

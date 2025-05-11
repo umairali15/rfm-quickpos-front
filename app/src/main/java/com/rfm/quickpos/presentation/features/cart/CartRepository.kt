@@ -65,7 +65,7 @@ class CartRepository {
     /**
      * Add cart item and update totals
      */
-    private fun addCartItem(cartItem: CartItemWithModifiers) {
+    internal fun addCartItem(cartItem: CartItemWithModifiers) {
         val currentItems = _cartItems.value.toMutableList()
 
         // Check if item already exists

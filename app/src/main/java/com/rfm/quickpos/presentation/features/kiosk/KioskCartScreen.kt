@@ -1,3 +1,5 @@
+// app/src/main/java/com/rfm/quickpos/presentation/features/kiosk/KioskCartScreen.kt
+
 package com.rfm.quickpos.presentation.features.kiosk
 
 import androidx.compose.foundation.layout.Arrangement
@@ -13,11 +15,14 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -30,25 +35,30 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.rfm.quickpos.QuickPOSApplication
 import com.rfm.quickpos.presentation.common.components.RfmDivider
 import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
+import com.rfm.quickpos.presentation.common.components.RfmQuantitySelector
 import com.rfm.quickpos.presentation.common.theme.PriceTextLarge
-import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
-import com.rfm.quickpos.presentation.features.cart.CartItem
+import com.rfm.quickpos.presentation.common.theme.posColors
+import com.rfm.quickpos.presentation.features.cart.CartItemWithModifiers
 import kotlinx.coroutines.delay
 
 /**
- * Kiosk cart screen - simplified version with larger elements for touch
+ * Enhanced Kiosk cart screen with backend integration
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,29 +67,16 @@ fun KioskCartScreen(
     onCheckoutClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Sample data for preview
-    val sampleCartItems = listOf(
-        CartItem(
-            id = "1",
-            name = "Coffee",
-            price = 15.00,
-            quantity = 2
-        ),
-        CartItem(
-            id = "2",
-            name = "Croissant",
-            price = 10.00,
-            quantity = 1
-        ),
-        CartItem(
-            id = "3",
-            name = "Water Bottle",
-            price = 5.00,
-            quantity = 3
-        )
-    )
+    // Get repositories from application
+    val context = LocalContext.current
+    val cartRepository = (context.applicationContext as QuickPOSApplication).cartRepository
 
-    val subtotal = sampleCartItems.sumOf { it.price * it.quantity }
+    // Collect cart state
+    val cartItems by cartRepository.cartItems.collectAsState()
+    val cartTotal by cartRepository.cartTotal.collectAsState()
+
+    // Calculate totals
+    val subtotal = cartItems.sumOf { it.totalPrice }
     val tax = subtotal * 0.05
     val total = subtotal + tax
 
@@ -93,7 +90,7 @@ fun KioskCartScreen(
             inactivitySeconds++
 
             if (inactivitySeconds >= maxInactivitySeconds) {
-                // In real app, navigate back to attract screen
+                // Return to attract screen in real app
                 break
             }
         }
@@ -134,7 +131,7 @@ fun KioskCartScreen(
             )
         }
     ) { paddingValues ->
-        if (sampleCartItems.isEmpty()) {
+        if (cartItems.isEmpty()) {
             // Empty cart state
             Box(
                 contentAlignment = Alignment.Center,
@@ -196,12 +193,16 @@ fun KioskCartScreen(
                         .weight(1f)
                         .fillMaxWidth()
                 ) {
-                    items(sampleCartItems) { item ->
+                    items(cartItems) { item ->
                         KioskCartItemRow(
                             cartItem = item,
+                            onQuantityChange = { newQuantity ->
+                                resetInactivityTimer()
+                                cartRepository.updateItemQuantity(item.id, newQuantity)
+                            },
                             onRemove = {
                                 resetInactivityTimer()
-                                // In real app, remove item logic
+                                cartRepository.removeItem(item.id)
                             }
                         )
 
@@ -209,7 +210,7 @@ fun KioskCartScreen(
                     }
                 }
 
-                // Order summary and checkout button - larger for kiosk mode
+                // Order summary and checkout button
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
                     shadowElevation = 8.dp,
@@ -221,7 +222,7 @@ fun KioskCartScreen(
                             .fillMaxWidth()
                             .padding(24.dp)
                     ) {
-                        // Order summary - centered for kiosk
+                        // Order summary
                         Text(
                             text = "Order Summary",
                             style = MaterialTheme.typography.titleLarge,
@@ -287,7 +288,7 @@ fun KioskCartScreen(
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // Checkout button - larger for kiosk
+                        // Checkout button
                         RfmPrimaryButton(
                             text = "Proceed to Payment",
                             onClick = {
@@ -306,83 +307,138 @@ fun KioskCartScreen(
 }
 
 /**
- * Kiosk cart item row - simplified version
+ * Kiosk cart item row with variations display
  */
 @Composable
-fun KioskCartItemRow(
-    cartItem: CartItem,
+private fun KioskCartItemRow(
+    cartItem: CartItemWithModifiers,
+    onQuantityChange: (Int) -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        // Quantity text
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(40.dp)
-                .padding(end = 8.dp)
-        ) {
-            Text(
-                text = cartItem.quantity.toString() + "×",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-
-        // Item info - no quantity selector in kiosk mode
         Column(
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.padding(16.dp)
         ) {
-            Text(
-                text = cartItem.name,
-                style = MaterialTheme.typography.titleLarge
-            )
+            // Main item row
+            Row(
+                verticalAlignment = Alignment.Top,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Quantity selector
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .padding(end = 12.dp)
+                        .align(Alignment.Top)
+                ) {
+                    RfmQuantitySelector(
+                        quantity = cartItem.quantity,
+                        onQuantityChange = onQuantityChange,
+                        minValue = 1,
+                        maxValue = 99
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(4.dp))
+                // Item info
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = cartItem.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
 
-            Text(
-                text = "AED ${String.format("%.2f", cartItem.price)}",
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
+                    Spacer(modifier = Modifier.height(4.dp))
 
-        // Item total
-        Text(
-            text = "AED ${String.format("%.2f", cartItem.price * cartItem.quantity)}",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
+                    Text(
+                        text = "Unit Price: AED ${String.format("%.2f", cartItem.price)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
 
-        Spacer(modifier = Modifier.width(16.dp))
+                    // Show variations if any
+                    if (cartItem.variations.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
 
-        // Remove button
-        IconButton(
-            onClick = onRemove
-        ) {
-            Icon(
-                imageVector = Icons.Default.Delete,
-                contentDescription = "Remove",
-                tint = MaterialTheme.colorScheme.error
-            )
-        }
-    }
-}
+                        cartItem.variations.forEach { (variationName, option) ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = "$variationName: ",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    text = option.name,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                if (option.priceAdjustment != 0.0) {
+                                    Text(
+                                        text = " (${if (option.priceAdjustment > 0) "+" else ""}${String.format("%.2f", option.priceAdjustment)})",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (option.priceAdjustment > 0)
+                                            MaterialTheme.colorScheme.primary
+                                        else
+                                            MaterialTheme.posColors.success
+                                    )
+                                }
+                            }
+                        }
+                    }
 
-@Preview(showBackground = true)
-@Composable
-fun KioskCartScreenPreview() {
-    RFMQuickPOSTheme {
-        Surface {
-            KioskCartScreen(
-                onBackClick = {},
-                onCheckoutClick = {}
-            )
+                    // Show notes if any
+                    cartItem.notes?.let {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                    }
+                }
+
+                // Total price and remove button
+                Column(
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = "AED ${String.format("%.2f", cartItem.totalPrice)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    IconButton(
+                        onClick = onRemove,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Remove",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+            }
         }
     }
 }

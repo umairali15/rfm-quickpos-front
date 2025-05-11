@@ -1,3 +1,5 @@
+// app/src/main/java/com/rfm/quickpos/presentation/features/kiosk/KioskPaymentScreen.kt
+
 package com.rfm.quickpos.presentation.features.kiosk
 
 import androidx.compose.animation.core.LinearEasing
@@ -39,6 +41,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,17 +51,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.rfm.quickpos.QuickPOSApplication
 import com.rfm.quickpos.presentation.common.theme.PriceTextLarge
-import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import kotlinx.coroutines.delay
+import com.rfm.quickpos.presentation.features.payment.PaymentMethod
 
 /**
- * Fixed payment screen for kiosk mode - with proper text layout in payment cards
+ * Enhanced payment screen for kiosk mode with backend integration
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,10 +72,19 @@ fun KioskPaymentScreen(
     onPaymentComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val totalAmount = 95.00 // Sample amount
+    // Get cart repository to get total amount
+    val context = LocalContext.current
+    val cartRepository = (context.applicationContext as QuickPOSApplication).cartRepository
+    val cartTotal by cartRepository.cartTotal.collectAsState()
+
+    // Calculate final amount with tax
+    val subtotal = cartTotal
+    val tax = subtotal * 0.05
+    val totalAmount = subtotal + tax
 
     // State to track payment processing
     var isProcessing by remember { mutableStateOf(false) }
+    var selectedPaymentMethod by remember { mutableStateOf<PaymentMethod?>(null) }
 
     // Simulate payment processing
     LaunchedEffect(isProcessing) {
@@ -93,7 +107,7 @@ fun KioskPaymentScreen(
 
     // Auto-reset timer to attract screen after inactivity
     var inactivitySeconds by remember { mutableStateOf(0) }
-    val maxInactivitySeconds = 120 // 2 minutes of inactivity
+    val maxInactivitySeconds = 180 // 3 minutes for payment
 
     LaunchedEffect(inactivitySeconds) {
         while (true) {
@@ -101,7 +115,8 @@ fun KioskPaymentScreen(
             inactivitySeconds++
 
             if (inactivitySeconds >= maxInactivitySeconds && !isProcessing) {
-                // In real app, navigate back to attract screen
+                // Navigate back to attract screen
+                onBackClick()
                 break
             }
         }
@@ -152,120 +167,147 @@ fun KioskPaymentScreen(
         ) {
             if (isProcessing) {
                 // Payment processing view
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(80.dp),
-                        strokeWidth = 6.dp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    Text(
-                        text = "Processing Payment...",
-                        style = MaterialTheme.typography.headlineSmall,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Please do not remove your card",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                }
+                PaymentProcessingContent(selectedPaymentMethod)
             } else {
                 // Payment method selection
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(24.dp)
-                ) {
-                    // Amount to pay
-                    Text(
-                        text = "Amount to Pay",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = "AED ${String.format("%.2f", totalAmount)}",
-                        style = PriceTextLarge.copy(fontSize = PriceTextLarge.fontSize * 1.5),
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Spacer(modifier = Modifier.height(48.dp))
-
-                    // Select payment method text
-                    Text(
-                        text = "Select Payment Method",
-                        style = MaterialTheme.typography.headlineSmall,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // Card payment - main option for kiosk (FIXED LAYOUT)
-                    FixedKioskPaymentMethodCard(
-                        title = "Card",
-                        subtitle = "Pay with credit or debit card",
-                        icon = Icons.Default.CreditCard,
-                        onClick = {
-                            resetInactivityTimer()
-                            isProcessing = true
-                        },
-                        modifier = Modifier.scale(scale)
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Digital wallet option
-                    FixedKioskPaymentMethodCard(
-                        title = "Digital Wallet",
-                        subtitle = "Pay with Apple Pay, Google Pay, etc.",
-                        icon = Icons.Default.Payments,
-                        onClick = {
-                            resetInactivityTimer()
-                            isProcessing = true
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // QR code payment
-                    FixedKioskPaymentMethodCard(
-                        title = "Scan QR Code",
-                        subtitle = "Use your phone to scan and pay",
-                        icon = Icons.Default.QrCode,
-                        onClick = {
-                            resetInactivityTimer()
-                            // In real app, show QR code
-                        }
-                    )
-                }
+                PaymentSelectionContent(
+                    totalAmount = totalAmount,
+                    selectedPaymentMethod = selectedPaymentMethod,
+                    onPaymentMethodSelected = { method ->
+                        resetInactivityTimer()
+                        selectedPaymentMethod = method
+                        isProcessing = true
+                    },
+                    modifier = Modifier.scale(scale)
+                )
             }
         }
     }
 }
 
 /**
- * Fixed payment method card for kiosk mode with improved text layout
+ * Payment selection content
+ */
+@Composable
+private fun PaymentSelectionContent(
+    totalAmount: Double,
+    selectedPaymentMethod: PaymentMethod?,
+    onPaymentMethodSelected: (PaymentMethod) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp)
+    ) {
+        // Amount to pay
+        Text(
+            text = "Amount to Pay",
+            style = MaterialTheme.typography.headlineSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "AED ${String.format("%.2f", totalAmount)}",
+            style = PriceTextLarge.copy(fontSize = PriceTextLarge.fontSize * 1.5),
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(48.dp))
+
+        // Select payment method text
+        Text(
+            text = "Select Payment Method",
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Card payment - main option for kiosk
+        KioskPaymentMethodCard(
+            title = "Card",
+            subtitle = "Pay with credit or debit card",
+            icon = Icons.Default.CreditCard,
+            onClick = { onPaymentMethodSelected(PaymentMethod.CARD) },
+            modifier = modifier
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Digital wallet option
+        KioskPaymentMethodCard(
+            title = "Digital Wallet",
+            subtitle = "Pay with Apple Pay, Google Pay, etc.",
+            icon = Icons.Default.Payments,
+            onClick = { onPaymentMethodSelected(PaymentMethod.CARD) }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // QR code payment
+        KioskPaymentMethodCard(
+            title = "Scan QR Code",
+            subtitle = "Use your phone to scan and pay",
+            icon = Icons.Default.QrCode,
+            onClick = { onPaymentMethodSelected(PaymentMethod.CARD) }
+        )
+    }
+}
+
+/**
+ * Payment processing content
+ */
+@Composable
+private fun PaymentProcessingContent(selectedPaymentMethod: PaymentMethod?) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        CircularProgressIndicator(
+            modifier = Modifier.size(80.dp),
+            strokeWidth = 6.dp,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Processing Payment...",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = when (selectedPaymentMethod) {
+                PaymentMethod.CARD -> "Please do not remove your card"
+                PaymentMethod.CARD -> "Please complete payment on your device"
+                PaymentMethod.CARD -> "Please scan the QR code to complete payment"
+                else -> "Please wait while we process your payment"
+            },
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+/**
+ * Payment method card for kiosk mode
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FixedKioskPaymentMethodCard(
+private fun KioskPaymentMethodCard(
     title: String,
     subtitle: String,
     icon: ImageVector,
@@ -283,7 +325,7 @@ fun FixedKioskPaymentMethodCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier
             .fillMaxWidth()
-            .height(110.dp) // Increased height to accommodate text
+            .height(110.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -306,17 +348,17 @@ fun FixedKioskPaymentMethodCard(
                 )
             }
 
-            // Text content with proper constraints
+            // Text content
             Column(
                 modifier = Modifier
-                    .weight(1f) // Take remaining space
-                    .padding(end = 8.dp) // Add padding to prevent text from touching the edge
+                    .weight(1f)
+                    .padding(end = 8.dp)
             ) {
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1, // Limit to 1 line
+                    maxLines = 1,
                     lineHeight = 28.sp
                 )
 
@@ -326,7 +368,7 @@ fun FixedKioskPaymentMethodCard(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2, // Allow 2 lines for subtitle
+                    maxLines = 2,
                     lineHeight = 20.sp
                 )
             }
@@ -334,10 +376,12 @@ fun FixedKioskPaymentMethodCard(
     }
 }
 
+
+
 @Preview(showBackground = true)
 @Composable
 fun KioskPaymentScreenPreview() {
-    RFMQuickPOSTheme {
+    com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme {
         Surface {
             KioskPaymentScreen(
                 onBackClick = {},
