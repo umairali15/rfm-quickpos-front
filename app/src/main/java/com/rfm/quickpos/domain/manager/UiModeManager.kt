@@ -31,7 +31,7 @@ class UiModeManager(
 
     companion object {
         private const val PREFS_NAME = "rfm_quickpos_preferences"
-        private const val KEY_UI_MODE = "ui_mode"
+        private const val KEY_UI_MODE = "app_mode"
         private const val KIOSK_PIN = "5678" // For demo purposes, different PIN for kiosk mode
     }
 

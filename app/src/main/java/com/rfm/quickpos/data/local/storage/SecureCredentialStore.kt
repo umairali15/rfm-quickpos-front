@@ -233,7 +233,7 @@ class SecureCredentialStore(context: Context) {
         private const val KEY_TABLE_ID = "table_id"
         private const val KEY_IS_ACTIVE = "is_active"
         private const val KEY_AUTH_TOKEN = "auth_token"
-        private const val KEY_UI_MODE = "ui_mode"
+        private const val KEY_UI_MODE = "app_mode"
         private const val KEY_USER_DATA = "user_data"
         private const val KEY_BUSINESS_TYPE = "business_type"
     }
