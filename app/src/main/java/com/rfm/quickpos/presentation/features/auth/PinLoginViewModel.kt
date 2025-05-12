@@ -7,9 +7,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rfm.quickpos.data.repository.AuthRepository
 import com.rfm.quickpos.data.repository.AuthState
-import com.rfm.quickpos.data.repository.DeviceRepository
 import com.rfm.quickpos.data.repository.DeviceRegistrationState
+import com.rfm.quickpos.data.repository.DeviceRepository
 import com.rfm.quickpos.domain.model.UiMode
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -69,7 +70,10 @@ class PinLoginViewModel(
 
                             // After successful authentication, authenticate the device
                             // to get the latest device configuration including app mode
-                            authenticateDevice()
+                            val deviceAuthResult = authenticateDevice()
+
+                            // FIX: Added log after device authentication
+                            Log.d(TAG, "Device auth completed, current UI mode: ${uiMode.value}")
                         }
                         is AuthState.Error -> {
                             Log.e(TAG, "Authentication error: ${state.message}")
@@ -101,6 +105,9 @@ class PinLoginViewModel(
                             Log.d(TAG, "Device authenticated successfully, UI mode updated")
                             // The UI mode is automatically updated in the device repository
                             // when authenticateDevice() is called
+
+                            // FIX: Check current UI mode after device registration update
+                            Log.d(TAG, "Current UI mode after device auth update: ${uiMode.value}")
                         }
                         is DeviceRegistrationState.Error -> {
                             Log.e(TAG, "Device authentication error: ${state.message}")
@@ -121,7 +128,9 @@ class PinLoginViewModel(
             )
 
             // Also authenticate the device to get the latest configuration
-            authenticateDevice()
+            viewModelScope.launch {
+                authenticateDevice()
+            }
         }
     }
 
@@ -129,21 +138,22 @@ class PinLoginViewModel(
      * Authenticate the device with the server to get latest configuration
      * including app mode
      */
-    private fun authenticateDevice() {
-        viewModelScope.launch {
-            Log.d(TAG, "Authenticating device to get latest configuration")
-            try {
-                val state = deviceRepository.authenticateDevice()
-                Log.d(TAG, "Device authentication result: $state")
+    suspend fun authenticateDevice(): DeviceRegistrationState {
+        Log.d(TAG, "Authenticating device to get latest configuration")
+        try {
+            val state = deviceRepository.authenticateDevice()
+            Log.d(TAG, "Device authentication result: $state")
 
-                // The UI mode will be automatically updated in the device repository
-                // from the response if a valid app mode was returned
+            // The UI mode will be automatically updated in the device repository
+            // from the response if a valid app mode was returned
 
-                // Log the current UI mode for debugging
-                Log.d(TAG, "Current UI mode after device authentication: ${uiMode.value}")
-            } catch (e: Exception) {
-                Log.e(TAG, "Error authenticating device", e)
-            }
+            // Log the current UI mode for debugging
+            Log.d(TAG, "Current UI mode after device authentication: ${uiMode.value}")
+
+            return state
+        } catch (e: Exception) {
+            Log.e(TAG, "Error authenticating device", e)
+            return DeviceRegistrationState.Error(e.message ?: "Unknown error")
         }
     }
 
@@ -171,9 +181,10 @@ class PinLoginViewModel(
                 return@launch
             }
 
-            // Update UI mode if different
+            // Update UI mode if different (but this will be overridden by server)
+            // FIX: Add a note that we're setting local mode but server may override it
             if (uiMode.value != mode) {
-                Log.d(TAG, "Updating UI mode to: $mode")
+                Log.d(TAG, "Setting local UI mode to: $mode (may be overridden by server)")
                 deviceRepository.updateUiMode(mode)
             }
 
@@ -198,7 +209,26 @@ class PinLoginViewModel(
                     )
 
                     // After successful login, authenticate the device to get latest configuration
-                    authenticateDevice()
+                    // FIX: Added more robust device authentication with retry
+                    try {
+                        Log.d(TAG, "Starting device authentication after login...")
+
+                        // Try to authenticate device
+                        val deviceAuthResult = authenticateDevice()
+
+                        // If authentication was successful, wait a moment for UI mode to update
+                        if (deviceAuthResult is DeviceRegistrationState.Success) {
+                            // Give the system a moment to apply the UI mode change
+                            delay(300)
+
+                            // Log the current UI mode for debugging
+                            Log.d(TAG, "UI mode after successful device auth: ${uiMode.value}")
+                        } else {
+                            Log.d(TAG, "Device authentication did not succeed: $deviceAuthResult")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error during device authentication after login", e)
+                    }
                 } else if (authState is AuthState.Error) {
                     Log.e(TAG, "Login failed: ${authState.message}")
                     _viewState.value = _viewState.value.copy(

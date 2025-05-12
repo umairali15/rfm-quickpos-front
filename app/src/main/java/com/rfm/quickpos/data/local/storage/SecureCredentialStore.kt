@@ -34,7 +34,8 @@ class SecureCredentialStore(context: Context) {
 
     private val gson = Gson()
 
-    // Device information
+
+
     fun saveDeviceInfo(deviceData: DeviceData) {
         Log.d(TAG, "Saving device info: $deviceData")
 
@@ -53,15 +54,20 @@ class SecureCredentialStore(context: Context) {
 
         // Apply changes
         editor.apply()
+    }
 
-        // Convert UI mode string to enum (if available)
-        deviceData.uiMode?.let {
-            val uiMode = try {
-                UiMode.valueOf(it.uppercase())
+    // Add a new method to save app mode directly
+    fun saveAppMode(appMode: String?) {
+        if (appMode != null) {
+            try {
+                val uiMode = UiMode.valueOf(appMode.uppercase())
+                Log.d(TAG, "Saving app mode from server: $appMode -> $uiMode")
+                saveUiMode(uiMode)
             } catch (e: IllegalArgumentException) {
-                UiMode.CASHIER // Default to CASHIER if invalid
+                Log.e(TAG, "Invalid appMode value from server: $appMode", e)
+                // Default to CASHIER if invalid
+                saveUiMode(UiMode.CASHIER)
             }
-            saveUiMode(uiMode)
         }
     }
 

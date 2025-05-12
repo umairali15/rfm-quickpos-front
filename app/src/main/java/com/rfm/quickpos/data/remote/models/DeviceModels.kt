@@ -40,15 +40,14 @@ data class DeviceAuthRequest(
 data class DeviceAuthResponse(
     val success: Boolean,
     val token: String,
+    // FIX: appMode is at the root level, not in the device object
+    @SerializedName("appMode") val appMode: String? = null,
     val device: DeviceData
 )
 
 /**
  * Device data returned from API
  */
-
-
-// Add or update this field in the DeviceData class
 data class DeviceData(
     val id: String,
     val alias: String,
@@ -57,12 +56,15 @@ data class DeviceData(
     @SerializedName("company_schema") val companySchema: String? = null,
     @SerializedName("table_id") val tableId: String? = null,
     @SerializedName("is_active") val isActive: Boolean = true,
-    @SerializedName("appMode") val uiMode: String? = null,  // "CASHIER" or "KIOSK"
+
+    // Fix: Use multiple alternate names to catch all possible field variants
+    @SerializedName(value = "appMode", alternate = ["app_mode"])
+    val appMode: String? = null,
 
     // Additional fields
-    val serialNumber: String? = null,
+    @SerializedName("serial_number") val serialNumber: String? = null,
     val model: String? = null,
-    val appVersion: String? = null
+    @SerializedName("app_version") val appVersion: String? = null
 )
 
 /**

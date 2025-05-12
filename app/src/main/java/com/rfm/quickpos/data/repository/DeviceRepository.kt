@@ -125,7 +125,8 @@ class DeviceRepository(
                     companySchema = response.device.companySchema ?: "company_default",
                     tableId = response.device.tableId,
                     isActive = response.device.isActive,
-                    uiMode = response.device.uiMode ?: UiMode.CASHIER.name,
+                    // FIX: Use appMode instead of uiMode
+                    appMode = response.device.appMode ?: UiMode.CASHIER.name,
                     serialNumber = response.device.serialNumber ?: deviceSerialNumber
                 )
 
@@ -141,7 +142,7 @@ class DeviceRepository(
                 credentialStore.saveSerialNumber(deviceSerialNumber)
 
                 // Update UI mode
-                val newMode = deviceData.uiMode?.let {
+                val newMode = deviceData.appMode?.let {
                     try {
                         UiMode.valueOf(it.uppercase())
                     } catch (e: IllegalArgumentException) {
@@ -192,7 +193,13 @@ class DeviceRepository(
             val request = DeviceAuthRequest(deviceId, serialNumber)
             val response = apiService.authenticateDevice(request)
 
+            Log.d(TAG, "Raw auth response: $response")
+
             if (response.success) {
+                // Log the complete response and the top-level appMode field
+                Log.d(TAG, "Device data received from server: ${response.device}")
+                Log.d(TAG, "Top-level appMode from response: ${response.appMode}")
+
                 // Update device info
                 credentialStore.saveDeviceInfo(response.device)
 
@@ -203,23 +210,28 @@ class DeviceRepository(
                     Log.w(TAG, "Server returned null token for successful authentication")
                 }
 
-                // Update UI mode from response - prioritize the server's preference
-                val serverUiMode = response.device.uiMode?.let {
+                // FIX: Get UI mode from the response's top-level appMode field
+                val serverUiMode = response.appMode?.let {
                     try {
-                        UiMode.valueOf(it.uppercase())
+                        // Convert to uppercase for enum
+                        val mode = it.uppercase()
+                        Log.d(TAG, "Server returned appMode: $it (will convert to $mode)")
+                        UiMode.valueOf(mode)
                     } catch (e: IllegalArgumentException) {
+                        Log.e(TAG, "Invalid UI mode from server: $it", e)
                         null // Invalid mode name
                     }
                 }
 
-                // If server specified a UI mode, use it; otherwise, keep the current mode
-                val newMode = serverUiMode ?: _uiMode.value
-                if (serverUiMode != null && serverUiMode != _uiMode.value) {
-                    Log.d(TAG, "Server requested UI mode change: ${_uiMode.value} -> $serverUiMode")
+                if (serverUiMode != null) {
+                    if (serverUiMode != _uiMode.value) {
+                        Log.d(TAG, "Server requested UI mode change: ${_uiMode.value} -> $serverUiMode")
+                    }
+                    _uiMode.value = serverUiMode
+                    credentialStore.saveUiMode(serverUiMode)
+                } else {
+                    Log.d(TAG, "Server did not specify UI mode, keeping current: ${_uiMode.value}")
                 }
-
-                _uiMode.value = newMode
-                credentialStore.saveUiMode(newMode)
 
                 val success = DeviceRegistrationState.Success(response.device.id)
                 _deviceRegistrationState.value = success
@@ -230,6 +242,7 @@ class DeviceRepository(
                 error
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Exception during device authentication", e)
             val error = DeviceRegistrationState.Error(e.message ?: "Unknown error")
             _deviceRegistrationState.value = error
             error
@@ -240,6 +253,7 @@ class DeviceRepository(
      * Update UI mode based on server configuration or local change
      */
     fun updateUiMode(mode: UiMode) {
+        Log.d(TAG, "Updating UI mode to: $mode")
         _uiMode.value = mode
         credentialStore.saveUiMode(mode)
 

@@ -44,6 +44,8 @@ import com.rfm.quickpos.presentation.features.setup.DevicePairingScreen
 import com.rfm.quickpos.presentation.features.setup.DevicePairingViewModel
 import com.rfm.quickpos.presentation.features.splash.SplashScreen
 import com.rfm.quickpos.presentation.navigation.AuthScreen
+import com.rfm.quickpos.presentation.navigation.KioskScreen
+import com.rfm.quickpos.presentation.navigation.Screen
 import com.rfm.quickpos.presentation.navigation.UnifiedNavigation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -114,14 +116,29 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Monitor UI mode changes - FIX: Added more responsive UI mode monitoring
+        lifecycleScope.launch {
+            deviceRepository.uiMode.collectLatest { mode ->
+                Log.d(TAG, "UI mode changed to: $mode - updating app behavior")
+
+                // Only update navigation if we're in the Ready state
+                if (_appState.value == AppState.Ready) {
+                    // Force redraw of navigation with updated mode
+                    setContent {
+                        RFMQuickPOSTheme {
+                            MainScreen()
+                        }
+                    }
+                }
+            }
+        }
+
         setContent {
             RFMQuickPOSTheme {
                 MainScreen()
             }
         }
     }
-
-    // app/src/main/java/com/rfm/quickpos/MainActivity.kt
 
     @Composable
     fun MainScreen() {
@@ -143,6 +160,11 @@ class MainActivity : ComponentActivity() {
         // Log state changes for debugging
         LaunchedEffect(currentAppState) {
             Log.d(TAG, "App state changed to: $currentAppState")
+        }
+
+        // Log UI mode to verify correct value is being used
+        LaunchedEffect(uiMode) {
+            Log.d(TAG, "Current UI mode in composition: $uiMode")
         }
 
         // Provide feature flags based on UI mode
@@ -258,13 +280,18 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
 
+                            // FIX: Get the current UI mode from repository every time navigation is built
+                            // to ensure it's always using the latest value
+                            val currentUiMode = deviceRepository.uiMode.collectAsState().value
+                            Log.d(TAG, "Building navigation with UI mode: $currentUiMode")
+
                             // Use UnifiedNavigation with the appropriate start destination
                             UnifiedNavigation(
                                 navController = navController,
                                 // Skip to the home screen since we're already authenticated
-                                startDestination = if (uiMode == UiMode.CASHIER)
-                                    "dashboard" else "kiosk_attract",
-                                uiMode = uiMode,
+                                startDestination = if (currentUiMode == UiMode.CASHIER)
+                                    Screen.Dashboard.route else KioskScreen.Attract.route,
+                                uiMode = currentUiMode,
                                 onChangeMode = { newMode ->
                                     lifecycleScope.launch {
                                         deviceRepository.updateUiMode(newMode)
@@ -335,9 +362,6 @@ class MainActivity : ComponentActivity() {
         )
     }
 
-    /**
-     * Initialize app state based on device registration and authentication status
-     */
     private fun initializeAppState() {
         lifecycleScope.launch {
             // Start with initializing state
@@ -346,7 +370,22 @@ class MainActivity : ComponentActivity() {
             // Simulate splash screen delay
             delay(1500)
 
-            // First check if the user is authenticated
+            // Always check with the server for the latest device settings
+            if (deviceRepository.isDeviceRegistered()) {
+                try {
+                    // Force device re-authentication to get the latest settings including UI mode
+                    Log.d(TAG, "Authenticating device on startup to get latest settings")
+                    val deviceAuthResult = deviceRepository.authenticateDevice()
+                    Log.d(TAG, "Device auth on startup completed with result: $deviceAuthResult")
+
+                    // Allow a short delay for UI mode changes to propagate
+                    delay(300)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error authenticating device on startup", e)
+                }
+            }
+
+            // Now continue with normal app initialization
             if (!authRepository.isAuthenticated()) {
                 Log.d(TAG, "User not authenticated, need login")
                 _appState.value = AppState.NeedsAuthentication
@@ -392,6 +431,20 @@ class MainActivity : ComponentActivity() {
                     systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
                 }
             }
+        }
+    }
+
+    /**
+     * Helper method to navigate to the correct home screen based on UI mode
+     */
+    private fun navigateToHomeScreen(mode: UiMode) {
+        Log.d(TAG, "Attempting to navigate to home screen for mode: $mode")
+
+        // We're using the state machine pattern, so we just need to update app state
+        // The composable logic will handle the actual navigation based on this state
+        if (_appState.value == AppState.Ready) {
+            // Trigger a re-composition by setting the state to itself
+            _appState.value = AppState.Ready
         }
     }
 
