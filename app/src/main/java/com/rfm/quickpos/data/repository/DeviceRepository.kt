@@ -193,9 +193,15 @@ class DeviceRepository(
             val response = apiService.authenticateDevice(request)
 
             if (response.success) {
-                // Update device info and token
+                // Update device info
                 credentialStore.saveDeviceInfo(response.device)
-                credentialStore.saveAuthToken(response.token)
+
+                // Add null check before saving token
+                if (response.token != null) {
+                    credentialStore.saveAuthToken(response.token)
+                } else {
+                    Log.w(TAG, "Server returned null token for successful authentication")
+                }
 
                 // Update UI mode from response - prioritize the server's preference
                 val serverUiMode = response.device.uiMode?.let {

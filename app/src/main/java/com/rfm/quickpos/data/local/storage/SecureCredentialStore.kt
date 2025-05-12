@@ -92,8 +92,13 @@ class SecureCredentialStore(context: Context) {
         return preferences.getString(KEY_BUSINESS_TYPE, null)
     }
 
-    // Authentication
-    fun saveAuthToken(token: String) {
+    // In SecureCredentialStore.kt
+    fun saveAuthToken(token: String?) {
+        if (token == null) {
+            Log.w(TAG, "Attempted to save null auth token, ignoring")
+            return
+        }
+
         preferences.edit()
             .putString(KEY_AUTH_TOKEN, token)
             .apply()

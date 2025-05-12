@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.rfm.quickpos.data.repository.AuthRepository
 import com.rfm.quickpos.data.repository.AuthState
 import com.rfm.quickpos.data.repository.DeviceRepository
+import com.rfm.quickpos.data.repository.DeviceRegistrationState
 import com.rfm.quickpos.domain.model.UiMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +19,7 @@ import kotlinx.coroutines.launch
 private const val TAG = "PinLoginViewModel"
 
 /**
- * ViewModel for PIN login screen
+ * ViewModel for PIN login screen with enhanced device mode checking
  */
 class PinLoginViewModel(
     private val authRepository: AuthRepository,
@@ -65,6 +66,10 @@ class PinLoginViewModel(
                                 userData = state.userData,
                                 errorMessage = null
                             )
+
+                            // After successful authentication, authenticate the device
+                            // to get the latest device configuration including app mode
+                            authenticateDevice()
                         }
                         is AuthState.Error -> {
                             Log.e(TAG, "Authentication error: ${state.message}")
@@ -86,6 +91,26 @@ class PinLoginViewModel(
                     }
                 }
             }
+
+            // Also monitor device registration state to detect mode changes
+            viewModelScope.launch {
+                deviceRepository.deviceRegistrationState.collectLatest { state ->
+                    Log.d(TAG, "Device registration state changed: $state")
+                    when (state) {
+                        is DeviceRegistrationState.Success -> {
+                            Log.d(TAG, "Device authenticated successfully, UI mode updated")
+                            // The UI mode is automatically updated in the device repository
+                            // when authenticateDevice() is called
+                        }
+                        is DeviceRegistrationState.Error -> {
+                            Log.e(TAG, "Device authentication error: ${state.message}")
+                        }
+                        else -> {
+                            // Other states don't require handling here
+                        }
+                    }
+                }
+            }
         }
 
         // Check if already authenticated
@@ -94,6 +119,31 @@ class PinLoginViewModel(
             _viewState.value = _viewState.value.copy(
                 isAuthenticated = true
             )
+
+            // Also authenticate the device to get the latest configuration
+            authenticateDevice()
+        }
+    }
+
+    /**
+     * Authenticate the device with the server to get latest configuration
+     * including app mode
+     */
+    private fun authenticateDevice() {
+        viewModelScope.launch {
+            Log.d(TAG, "Authenticating device to get latest configuration")
+            try {
+                val state = deviceRepository.authenticateDevice()
+                Log.d(TAG, "Device authentication result: $state")
+
+                // The UI mode will be automatically updated in the device repository
+                // from the response if a valid app mode was returned
+
+                // Log the current UI mode for debugging
+                Log.d(TAG, "Current UI mode after device authentication: ${uiMode.value}")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error authenticating device", e)
+            }
         }
     }
 
@@ -146,6 +196,9 @@ class PinLoginViewModel(
                         userData = authState.userData,
                         errorMessage = null
                     )
+
+                    // After successful login, authenticate the device to get latest configuration
+                    authenticateDevice()
                 } else if (authState is AuthState.Error) {
                     Log.e(TAG, "Login failed: ${authState.message}")
                     _viewState.value = _viewState.value.copy(
