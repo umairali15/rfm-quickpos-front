@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rfm.quickpos.QuickPOSApplication
 import com.rfm.quickpos.data.remote.models.Item
+import com.rfm.quickpos.data.remote.models.ItemVariationOption
 import com.rfm.quickpos.data.remote.models.VariationOption
 import com.rfm.quickpos.presentation.common.components.RfmOutlinedButton
 import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
@@ -57,6 +58,7 @@ import com.rfm.quickpos.presentation.common.components.RfmQuantitySelector
 import com.rfm.quickpos.presentation.features.cart.CartItemWithModifiers
 import com.rfm.quickpos.presentation.features.catalog.BusinessTypeItemInfo
 import com.rfm.quickpos.presentation.features.catalog.VariationsSection
+import com.rfm.quickpos.presentation.features.catalog.ModifiersSection
 import kotlinx.coroutines.delay
 
 /**
@@ -112,21 +114,28 @@ fun KioskItemDetailScreen(
 
     // Local state
     var quantity by remember { mutableIntStateOf(1) }
-    val selectedVariations = remember { mutableStateMapOf<String, VariationOption>() }
+    val selectedVariations = remember { mutableStateMapOf<String, ItemVariationOption>() }
+    val selectedModifiers = remember { mutableStateMapOf<String, Set<String>>() }
 
-    // Get variations
-    val variations = item.settings?.inventory?.variations ?: emptyList()
+    // Get variations and modifiers
+    val variations = item.variations ?: emptyList()
+    val modifierGroups = item.modifierGroups ?: emptyList()
 
     // Calculate pricing
     val basePrice = item.price
     val variationsPriceAdjustment = selectedVariations.values.sumOf { it.priceAdjustment }
-    val totalUnitPrice = basePrice + variationsPriceAdjustment
+    val modifiersPriceAdjustment = modifierGroups.sumOf { group ->
+        group.modifiers.filter { modifier ->
+            selectedModifiers[group.id]?.contains(modifier.id) == true
+        }.sumOf { it.priceAdjustment }
+    }
+    val totalUnitPrice = basePrice + variationsPriceAdjustment + modifiersPriceAdjustment
     val totalPrice = totalUnitPrice * quantity
 
     // Initialize default variations
     LaunchedEffect(variations) {
         variations.forEach { variation ->
-            if (variation.options.isNotEmpty() && !selectedVariations.containsKey(variation.name)) {
+            if (variation.isRequired && variation.options.isNotEmpty() && !selectedVariations.containsKey(variation.name)) {
                 selectedVariations[variation.name] = variation.options.first()
             }
         }
@@ -200,10 +209,34 @@ fun KioskItemDetailScreen(
 
                     VariationsSection(
                         variations = variations,
-                        selectedVariations = selectedVariations,
+                        selectedVariations = selectedVariations.mapKeys { entry ->
+                            // Find variation name by searching through variations
+                            variations.find { variation ->
+                                variation.options.any { it.id == entry.value.id }
+                            }?.name ?: entry.key
+                        },
                         onVariationSelected = { variationName, option ->
                             resetInactivityTimer()
                             selectedVariations[variationName] = option
+                        }
+                    )
+                }
+
+                // Modifiers section
+                if (modifierGroups.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    ModifiersSection(
+                        modifierGroups = modifierGroups,
+                        selectedModifiers = selectedModifiers,
+                        onModifierToggled = { groupId, modifierId, isSelected ->
+                            resetInactivityTimer()
+                            val currentSelection = selectedModifiers[groupId] ?: emptySet()
+                            selectedModifiers[groupId] = if (isSelected) {
+                                currentSelection + modifierId
+                            } else {
+                                currentSelection - modifierId
+                            }
                         }
                     )
                 }
@@ -214,6 +247,8 @@ fun KioskItemDetailScreen(
                 PriceSummaryCard(
                     basePrice = basePrice,
                     variations = selectedVariations.values.toList(),
+                    modifierGroups = modifierGroups,
+                    selectedModifiers = selectedModifiers,
                     quantity = quantity,
                     total = totalPrice
                 )
@@ -244,17 +279,43 @@ fun KioskItemDetailScreen(
                     RfmPrimaryButton(
                         text = "Add to Cart",
                         onClick = {
-                            // Create cart item with variations
-                            val cartItem = CartItemWithModifiers(
-                                id = item.id,
-                                name = item.name,
-                                price = basePrice,
-                                quantity = quantity,
-                                variations = selectedVariations.toMap()
-                            )
+                            // Check if all required variations are selected
+                            val missingRequired = variations.filter { it.isRequired }
+                                .any { variation -> !selectedVariations.containsKey(variation.name) }
 
-                            cartRepository.addCartItem(cartItem)
-                            onClose()
+                            if (!missingRequired) {
+                                // Create cart item with variations in the correct format
+                                val cartItem = CartItemWithModifiers(
+                                    id = item.id,
+                                    name = item.name,
+                                    price = basePrice,
+                                    quantity = quantity,
+                                    variations = selectedVariations.mapValues { entry ->
+                                        VariationOption(
+                                            name = entry.value.name,
+                                            priceAdjustment = entry.value.priceAdjustment
+                                        )
+                                    },
+                                    // Convert selected modifiers to the expected format
+                                    modifiers = modifierGroups.flatMap { group ->
+                                        group.modifiers.filter { modifier ->
+                                            selectedModifiers[group.id]?.contains(modifier.id) == true
+                                        }.map { modifier ->
+                                            group.name to com.rfm.quickpos.data.remote.models.Modifier(
+                                                id = modifier.id,
+                                                name = modifier.name,
+                                                priceAdjustment = modifier.priceAdjustment,
+                                                displayOrder = modifier.displayOrder,
+                                                isDefault = modifier.isDefault,
+                                                available = modifier.available
+                                            )
+                                        }
+                                    }.toMap()
+                                )
+
+                                cartRepository.addCartItem(cartItem)
+                                onClose()
+                            }
                         },
                         modifier = Modifier.weight(1f),
                         leadingIcon = Icons.Default.ShoppingCart
@@ -422,7 +483,9 @@ private fun QuantityCard(
 @Composable
 private fun PriceSummaryCard(
     basePrice: Double,
-    variations: List<VariationOption>,
+    variations: List<ItemVariationOption>,
+    modifierGroups: List<com.rfm.quickpos.data.remote.models.ModifierGroup>,
+    selectedModifiers: Map<String, Set<String>>,
     quantity: Int,
     total: Double
 ) {
@@ -482,6 +545,35 @@ private fun PriceSummaryCard(
                             else
                                 MaterialTheme.colorScheme.tertiary
                         )
+                    }
+                }
+            }
+
+            // Modifiers
+            modifierGroups.forEach { group ->
+                group.modifiers.filter { modifier ->
+                    selectedModifiers[group.id]?.contains(modifier.id) == true
+                }.forEach { modifier ->
+                    if (modifier.priceAdjustment != 0.0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "• ${modifier.name}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = "${if (modifier.priceAdjustment > 0) "+" else ""}AED ${String.format("%.2f", modifier.priceAdjustment)}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (modifier.priceAdjustment > 0)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.tertiary
+                            )
+                        }
                     }
                 }
             }

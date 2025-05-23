@@ -12,9 +12,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -23,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -63,9 +66,8 @@ fun DualModePinLoginScreen(
     LaunchedEffect(viewState.isAuthenticated) {
         Log.d(TAG, "Authentication state changed: ${viewState.isAuthenticated}")
         if (viewState.isAuthenticated) {
-            // Authentication successful, call the callback
             Log.d(TAG, "Authentication successful, calling onPinSubmit")
-            onPinSubmit("", uiMode) // We don't need to pass the actual PIN back
+            onPinSubmit("", uiMode)
         }
     }
 
@@ -83,6 +85,11 @@ fun DualModePinLoginScreen(
     LaunchedEffect(currentError) {
         showError = currentError != null
     }
+
+    // Get screen configuration
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val isSmallScreen = screenHeight < 700.dp
 
     // Background gradient
     val backgroundGradient = Brush.verticalGradient(
@@ -102,15 +109,20 @@ fun DualModePinLoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(
+                    top = if (isSmallScreen) 16.dp else 24.dp,
+                    bottom = if (isSmallScreen) 16.dp else 24.dp
+                )
         ) {
-            // Logo
+            // Logo - smaller on small screens
             Image(
                 painter = painterResource(id = R.drawable.rfm_quickpos_logo),
                 contentDescription = "RFM QuickPOS Logo",
                 modifier = Modifier
-                    .size(120.dp)
-                    .padding(bottom = 16.dp)
+                    .size(if (isSmallScreen) 80.dp else 120.dp)
+                    .padding(bottom = if (isSmallScreen) 8.dp else 16.dp)
             )
 
             // Title
@@ -118,12 +130,12 @@ fun DualModePinLoginScreen(
                 text = "Welcome Back",
                 style = MaterialTheme.typography.headlineMedium.copy(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 28.sp
+                    fontSize = if (isSmallScreen) 24.sp else 28.sp
                 ),
                 color = MaterialTheme.colorScheme.onBackground
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(if (isSmallScreen) 4.dp else 8.dp))
 
             // Subtitle
             Text(
@@ -132,7 +144,7 @@ fun DualModePinLoginScreen(
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(if (isSmallScreen) 12.dp else 24.dp))
 
             // Error message
             AnimatedVisibility(
@@ -147,7 +159,7 @@ fun DualModePinLoginScreen(
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = if (isSmallScreen) 8.dp else 16.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -173,7 +185,7 @@ fun DualModePinLoginScreen(
             // Loading indicator
             if (viewState.isLoading) {
                 CircularProgressIndicator(
-                    modifier = Modifier.padding(16.dp)
+                    modifier = Modifier.padding(if (isSmallScreen) 8.dp else 16.dp)
                 )
             }
 
@@ -195,7 +207,7 @@ fun DualModePinLoginScreen(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp)
+                    .padding(bottom = if (isSmallScreen) 8.dp else 16.dp)
             )
 
             // Mode selector (Cashier/Kiosk)
@@ -204,7 +216,7 @@ fun DualModePinLoginScreen(
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = if (isSmallScreen) 8.dp else 16.dp)
                 ) {
                     // Cashier mode
                     ModeButton(
@@ -233,7 +245,7 @@ fun DualModePinLoginScreen(
                     shape = RoundedCornerShape(8.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
+                        .padding(bottom = if (isSmallScreen) 8.dp else 16.dp)
                         .clickable { isEditingMode = true }
                 ) {
                     Row(
@@ -279,116 +291,35 @@ fun DualModePinLoginScreen(
                 textAlign = TextAlign.Center,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 16.dp)
+                    .padding(vertical = if (isSmallScreen) 8.dp else 16.dp)
             )
 
-            // PIN keypad
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.padding(horizontal = 24.dp)
-            ) {
-                // Row 1: 1, 2, 3
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    PinButton(digit = "1", onClick = { pin += "1" }, modifier = Modifier.weight(1f))
-                    PinButton(digit = "2", onClick = { pin += "2" }, modifier = Modifier.weight(1f))
-                    PinButton(digit = "3", onClick = { pin += "3" }, modifier = Modifier.weight(1f))
-                }
-
-                // Row 2: 4, 5, 6
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    PinButton(digit = "4", onClick = { pin += "4" }, modifier = Modifier.weight(1f))
-                    PinButton(digit = "5", onClick = { pin += "5" }, modifier = Modifier.weight(1f))
-                    PinButton(digit = "6", onClick = { pin += "6" }, modifier = Modifier.weight(1f))
-                }
-
-                // Row 3: 7, 8, 9
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    PinButton(digit = "7", onClick = { pin += "7" }, modifier = Modifier.weight(1f))
-                    PinButton(digit = "8", onClick = { pin += "8" }, modifier = Modifier.weight(1f))
-                    PinButton(digit = "9", onClick = { pin += "9" }, modifier = Modifier.weight(1f))
-                }
-
-                // Row 4: Delete, 0, Submit
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Delete button
-                    IconButton(
-                        onClick = {
-                            if (pin.isNotEmpty()) {
-                                pin = pin.substring(0, pin.length - 1)
-                            }
-                        },
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f)
-                            .clip(CircleShape)
-                            .border(
-                                width = 1.dp,
-                                color = MaterialTheme.colorScheme.outline,
-                                shape = CircleShape
-                            )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Backspace,
-                            contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.onBackground
-                        )
+            // PIN keypad - made responsive
+            PinKeypad(
+                pin = pin,
+                onPinChange = { pin = it },
+                onSubmit = {
+                    if (pin.length >= 4 && email.isNotEmpty()) {
+                        viewModel.authenticateWithPin(email, pin, mode)
+                    } else {
+                        viewModel.clearError()
+                        showError = true
                     }
-
-                    // 0 digit
-                    PinButton(digit = "0", onClick = { pin += "0" }, modifier = Modifier.weight(1f))
-
-                    // Submit button
-                    IconButton(
-                        onClick = {
-                            if (pin.length >= 4 && email.isNotEmpty()) {
-                                viewModel.authenticateWithPin(email, pin, mode)
-                            } else {
-                                viewModel.clearError()
-                                showError = true
-                            }
-                        },
-                        enabled = !viewState.isLoading,
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(1f)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary)
-                    ) {
-                        if (viewState.isLoading) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.ArrowForward,
-                                contentDescription = "Submit",
-                                tint = MaterialTheme.colorScheme.onPrimary
-                            )
-                        }
-                    }
-                }
-            }
+                },
+                isLoading = viewState.isLoading,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = if (isSmallScreen) 0.dp else 24.dp)
+            )
 
             Spacer(modifier = Modifier.weight(1f))
 
             // Action buttons
             Row(
                 horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = if (isSmallScreen) 8.dp else 16.dp)
             ) {
                 // Email login button
                 TextButton(
@@ -427,6 +358,160 @@ fun DualModePinLoginScreen(
 }
 
 /**
+ * Responsive PIN keypad component
+ */
+@Composable
+private fun PinKeypad(
+    pin: String,
+    onPinChange: (String) -> Unit,
+    onSubmit: () -> Unit,
+    isLoading: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val isSmallScreen = screenHeight < 700.dp
+    val buttonSpacing = if (isSmallScreen) 8.dp else 16.dp
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(buttonSpacing),
+        modifier = modifier
+    ) {
+        // Row 1: 1, 2, 3
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(buttonSpacing),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            PinButton(
+                digit = "1",
+                onClick = { onPinChange(pin + "1") },
+                modifier = Modifier.weight(1f)
+            )
+            PinButton(
+                digit = "2",
+                onClick = { onPinChange(pin + "2") },
+                modifier = Modifier.weight(1f)
+            )
+            PinButton(
+                digit = "3",
+                onClick = { onPinChange(pin + "3") },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Row 2: 4, 5, 6
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(buttonSpacing),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            PinButton(
+                digit = "4",
+                onClick = { onPinChange(pin + "4") },
+                modifier = Modifier.weight(1f)
+            )
+            PinButton(
+                digit = "5",
+                onClick = { onPinChange(pin + "5") },
+                modifier = Modifier.weight(1f)
+            )
+            PinButton(
+                digit = "6",
+                onClick = { onPinChange(pin + "6") },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Row 3: 7, 8, 9
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(buttonSpacing),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            PinButton(
+                digit = "7",
+                onClick = { onPinChange(pin + "7") },
+                modifier = Modifier.weight(1f)
+            )
+            PinButton(
+                digit = "8",
+                onClick = { onPinChange(pin + "8") },
+                modifier = Modifier.weight(1f)
+            )
+            PinButton(
+                digit = "9",
+                onClick = { onPinChange(pin + "9") },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Row 4: Delete, 0, Submit
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(buttonSpacing),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Delete button
+            IconButton(
+                onClick = {
+                    if (pin.isNotEmpty()) {
+                        onPinChange(pin.substring(0, pin.length - 1))
+                    }
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f)
+                    .clip(CircleShape)
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outline,
+                        shape = CircleShape
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Backspace,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
+
+            // 0 digit
+            PinButton(
+                digit = "0",
+                onClick = { onPinChange(pin + "0") },
+                modifier = Modifier.weight(1f)
+            )
+
+            // Submit button
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .aspectRatio(1f)
+            ) {
+                IconButton(
+                    onClick = onSubmit,
+                    enabled = !isLoading,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.ArrowForward,
+                            contentDescription = "Submit",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
  * PIN keypad button component
  */
 @Composable
@@ -435,6 +520,10 @@ private fun PinButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val isSmallScreen = screenHeight < 700.dp
+
     IconButton(
         onClick = onClick,
         modifier = modifier
@@ -449,7 +538,8 @@ private fun PinButton(
         Text(
             text = digit,
             style = MaterialTheme.typography.headlineMedium.copy(
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                fontSize = if (isSmallScreen) 20.sp else 24.sp
             ),
             color = MaterialTheme.colorScheme.onBackground
         )

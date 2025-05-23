@@ -12,6 +12,7 @@ import com.rfm.quickpos.data.remote.models.BusinessTypeConfig
 import com.rfm.quickpos.data.remote.models.Category
 import com.rfm.quickpos.data.remote.models.CompanyInfo
 import com.rfm.quickpos.data.remote.models.Item
+import com.rfm.quickpos.data.remote.models.ItemVariation
 import com.rfm.quickpos.data.remote.models.ModifierGroup
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,8 +26,6 @@ private const val TAG = "CatalogRepository"
 private const val CATALOG_CACHE_FILE = "catalog_cache.json"
 private const val COMPANY_INFO_CACHE_FILE = "company_info_cache.json"
 private const val CATALOG_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000 // 24 hours
-
-// app/src/main/java/com/rfm/quickpos/data/repository/CatalogRepository.kt
 
 /**
  * Repository for catalog and business data
@@ -68,6 +67,7 @@ class CatalogRepository(
         // Load cached data on init
         loadCachedData()
     }
+
     /**
      * Initialize catalog data - this should be called when app is ready
      */
@@ -357,7 +357,7 @@ class CatalogRepository(
                 _syncState.value = CatalogSyncState.Error("Failed to fetch categories: ${categoriesResponse.error}")
                 return false
             }
-            _categories.value = categoriesResponse.data // Changed from 'categories' to 'data'
+            _categories.value = categoriesResponse.data
             Log.d(TAG, "Synced ${categoriesResponse.data.size} categories")
 
             // Fetch items
@@ -367,28 +367,39 @@ class CatalogRepository(
                 return false
             }
 
+            // Log items with new structure
             itemsResponse.data.forEach { item ->
                 Log.d("CatalogRepo", "Item: ${item.name}")
-                Log.d("CatalogRepo", "Has settings: ${item.settings != null}")
-                Log.d("CatalogRepo", "Has inventory: ${item.settings?.inventory != null}")
-                Log.d("CatalogRepo", "Has variations: ${item.settings?.inventory?.variations != null}")
-                Log.d("CatalogRepo", "Variations count: ${item.settings?.inventory?.variations?.size ?: 0}")
+                Log.d("CatalogRepo", "Has variations: ${!item.variations.isNullOrEmpty()}")
+                Log.d("CatalogRepo", "Variations count: ${item.variations?.size ?: 0}")
+                Log.d("CatalogRepo", "Has modifier groups: ${!item.modifierGroups.isNullOrEmpty()}")
+                Log.d("CatalogRepo", "Modifier groups count: ${item.modifierGroups?.size ?: 0}")
+
+                // Log variation details
+                item.variations?.forEach { variation ->
+                    Log.d("CatalogRepo", "  Variation: ${variation.name} (${variation.options.size} options)")
+                }
+
+                // Log modifier group details
+                item.modifierGroups?.forEach { group ->
+                    Log.d("CatalogRepo", "  Modifier Group: ${group.name} (${group.modifiers.size} modifiers)")
+                }
             }
 
-            _items.value = itemsResponse.data // Changed from 'items' to 'data'
+            _items.value = itemsResponse.data
             Log.d(TAG, "Synced ${itemsResponse.data.size} items")
 
-
-
-            // Fetch modifier groups based on business type
+            // Fetch modifier groups (legacy - for backward compatibility if needed)
+            // In the new structure, modifier groups come directly on items
             if (_businessTypeConfig.value?.supportsModifiers == true) {
                 val modifiersResponse = apiService.getModifierGroups()
                 if (!modifiersResponse.success) {
-                    _syncState.value = CatalogSyncState.Error("Failed to fetch modifiers: ${modifiersResponse.error}")
-                    return false
+                    Log.w(TAG, "Failed to fetch legacy modifier groups: ${modifiersResponse.error}")
+                    // Don't fail the sync, as modifiers now come with items
+                } else {
+                    _modifierGroups.value = modifiersResponse.data
+                    Log.d(TAG, "Synced ${modifiersResponse.data.size} legacy modifier groups")
                 }
-                _modifierGroups.value = modifiersResponse.data // Changed from 'modifierGroups' to 'data'
-                Log.d(TAG, "Synced ${modifiersResponse.data.size} modifier groups")
             } else {
                 Log.d(TAG, "Business type does not support modifiers, skipping modifier sync")
             }
@@ -421,12 +432,24 @@ class CatalogRepository(
 
     /**
      * Get modifier groups for a specific item
+     * Updated to use the new structure where modifier groups come directly on items
      */
     fun getModifierGroupsForItem(itemId: String): List<ModifierGroup> {
         val item = _items.value.find { it.id == itemId } ?: return emptyList()
-        return item.modifierGroupIds?.mapNotNull { groupId ->
-            _modifierGroups.value.find { it.id == groupId }
-        } ?: emptyList()
+
+        // Return modifier groups directly from the item (new structure)
+        return item.modifierGroups ?: emptyList()
+    }
+
+    /**
+     * Get variations for a specific item
+     * New method to get variations directly from the item
+     */
+    fun getVariationsForItem(itemId: String): List<ItemVariation> {
+        val item = _items.value.find { it.id == itemId } ?: return emptyList()
+
+        // Return variations directly from the item (new structure)
+        return item.variations ?: emptyList()
     }
 
     /**

@@ -71,7 +71,7 @@ data class ItemResponse(
 )
 
 /**
- * Item (product) model - FIXED to match API structure
+ * Item (product) model - Updated to match backend structure
  */
 data class Item(
     val id: String,
@@ -95,21 +95,50 @@ data class Item(
     @SerializedName("is_combo") val isCombo: Boolean = false,
     @SerializedName("combo_items") val comboItems: List<String>? = null,  // Array of item IDs in combo
     @SerializedName("service_level") val serviceLevel: String? = null,  // For service businesses
+
+    // Direct variations and modifier groups (new structure from backend)
+    val variations: List<ItemVariation>? = null,
+    @SerializedName("modifier_groups") val modifierGroups: List<ModifierGroup>? = null,
+
+    // Legacy field for backward compatibility
     @SerializedName("modifier_group_ids") val modifierGroupIds: List<String>? = null,
 
-    // Item settings
+    // Item settings (includes inventory)
     val settings: ItemSettings? = null
 )
 
 /**
- * Item settings - FIXED structure
+ * Item variation (new structure from backend)
+ */
+data class ItemVariation(
+    @SerializedName("link_id") val linkId: String,
+    @SerializedName("type_id") val typeId: String,
+    val name: String,
+    @SerializedName("is_required") val isRequired: Boolean = false,
+    @SerializedName("display_order") val displayOrder: Int = 0,
+    val options: List<ItemVariationOption>
+)
+
+/**
+ * Item variation option
+ */
+data class ItemVariationOption(
+    val id: String,
+    val name: String,
+    @SerializedName("price_adjustment") val priceAdjustment: Double = 0.0,
+    @SerializedName("sku_suffix") val skuSuffix: String? = null,
+    @SerializedName("display_order") val displayOrder: Int = 0
+)
+
+/**
+ * Item settings
  */
 data class ItemSettings(
     @SerializedName("inventory") val inventory: InventorySettings? = null
 )
 
 /**
- * Inventory settings - FIXED to include variations
+ * Inventory settings
  */
 data class InventorySettings(
     @SerializedName("cost_price") val costPrice: Double? = null,
@@ -118,15 +147,13 @@ data class InventorySettings(
     @SerializedName("primary_unit") val primaryUnit: String? = null,
     @SerializedName("secondary_unit") val secondaryUnit: String? = null,
     @SerializedName("available_branches") val availableBranches: List<String>? = null,
-    // Add these missing fields
     @SerializedName("has_variations") val hasVariations: Boolean? = null,
-    @SerializedName("variations") val variations: List<Variation>? = null,
     @SerializedName("discount_type") val discountType: String? = null,
     @SerializedName("discount_value") val discountValue: Double? = null
 )
 
 /**
- * Variation for an item
+ * Legacy Variation for backward compatibility (if needed)
  */
 data class Variation(
     val name: String,
@@ -134,7 +161,7 @@ data class Variation(
 )
 
 /**
- * Variation option
+ * Legacy Variation option for backward compatibility
  */
 data class VariationOption(
     val name: String,
@@ -151,24 +178,29 @@ data class ModifierGroupResponse(
 )
 
 /**
- * Modifier group model
+ * Modifier group model (updated to match backend)
  */
 data class ModifierGroup(
     val id: String,
     val name: String,
-    val required: Boolean = false,
     @SerializedName("min_selections") val minSelections: Int = 0,
     @SerializedName("max_selections") val maxSelections: Int = 1,
-    val modifiers: List<Modifier>
+    @SerializedName("is_required") val isRequired: Boolean = false,
+    @SerializedName("display_order") val displayOrder: Int = 0,
+    val modifiers: List<Modifier>,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("updated_at") val updatedAt: String? = null
 )
 
 /**
- * Modifier model
+ * Modifier model (updated to match backend)
  */
 data class Modifier(
     val id: String,
     val name: String,
     @SerializedName("price_adjustment") val priceAdjustment: Double = 0.0,
+    @SerializedName("display_order") val displayOrder: Int = 0,
+    @SerializedName("is_default") val isDefault: Boolean = false,
     val available: Boolean = true
 )
 
