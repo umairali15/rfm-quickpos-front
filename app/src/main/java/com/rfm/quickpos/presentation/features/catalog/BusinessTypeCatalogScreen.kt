@@ -1,7 +1,8 @@
-// app/src/main/java/com/rfm/quickpos/presentation/features/catalog/CatalogScreen.kt
+// app/src/main/java/com/rfm/quickpos/presentation/features/catalog/BusinessTypeCatalogScreen.kt
 
 package com.rfm.quickpos.presentation.features.catalog
 
+import android.util.Log
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
@@ -9,7 +10,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,17 +30,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Store
-import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -51,8 +50,10 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberBottomSheetScaffoldState
@@ -66,31 +67,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.repeatOnLifecycle
 import com.rfm.quickpos.data.remote.models.Item
 import com.rfm.quickpos.data.repository.CatalogRepository
 import com.rfm.quickpos.data.repository.CatalogSyncState
 import com.rfm.quickpos.presentation.common.components.BusinessTypeAwareProductCard
-import com.rfm.quickpos.presentation.common.components.RfmCategoryChip
-import com.rfm.quickpos.presentation.common.components.RfmLoadingIndicator
 import com.rfm.quickpos.presentation.common.components.RfmPrimaryButton
 import com.rfm.quickpos.presentation.common.components.RfmSearchBar
 import com.rfm.quickpos.presentation.common.theme.RfmRed
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+private const val TAG = "CatalogScreen"
 
 /**
  * Enhanced business type-aware catalog screen with modern design
@@ -125,6 +120,24 @@ fun BusinessTypeCatalogScreen(
     // Bottom sheet state
     val bottomSheetScaffoldState = rememberBottomSheetScaffoldState()
 
+    // Debug logging for items with variations/modifiers
+    LaunchedEffect(items) {
+        Log.d(TAG, "Total items loaded: ${items.size}")
+        items.forEach { item ->
+            if (!item.variations.isNullOrEmpty() || !item.modifierGroups.isNullOrEmpty()) {
+                Log.d(TAG, "Item: ${item.name} (${item.id})")
+                Log.d(TAG, "  - Variations: ${item.variations?.size ?: 0}")
+                item.variations?.forEach { variation ->
+                    Log.d(TAG, "    - ${variation.name}: ${variation.options.map { it.name }}")
+                }
+                Log.d(TAG, "  - Modifier Groups: ${item.modifierGroups?.size ?: 0}")
+                item.modifierGroups?.forEach { group ->
+                    Log.d(TAG, "    - ${group.name}: ${group.modifiers.map { it.name }}")
+                }
+            }
+        }
+    }
+
     // Filter items based on selected category and search query
     val filteredItems = remember(selectedCategoryId.value, searchQuery.value, items) {
         var result = if (selectedCategoryId.value != null) {
@@ -143,11 +156,6 @@ fun BusinessTypeCatalogScreen(
         }
 
         result.filter { it.active }
-    }
-
-    // Handle bottom sheet opening for custom item
-    LaunchedEffect(onAddCustomItem) {
-        // Use a different approach since onAddCustomItem is a function parameter
     }
 
     BottomSheetScaffold(
@@ -313,42 +321,23 @@ private fun EnhancedCatalogTopBar(
                 }
             },
             actions = {
-                // Cart icon with enhanced badge
-                Box(
-                    modifier = Modifier.padding(end = 8.dp),
-                    contentAlignment = Alignment.TopEnd
+                // Cart icon with badge
+                BadgedBox(
+                    badge = {
+                        if (cartItemCount > 0) {
+                            Badge {
+                                Text(
+                                    text = if (cartItemCount > 99) "99+" else cartItemCount.toString()
+                                )
+                            }
+                        }
+                    }
                 ) {
-                    IconButton(
-                        onClick = onCartClick,
-                        modifier = Modifier.size(48.dp)
-                    ) {
+                    IconButton(onClick = onCartClick) {
                         Icon(
                             imageVector = Icons.Default.ShoppingCart,
-                            contentDescription = "Cart",
-                            modifier = Modifier.size(24.dp)
+                            contentDescription = "Cart"
                         )
-                    }
-
-                    if (cartItemCount > 0) {
-                        Surface(
-                            shape = CircleShape,
-                            color = RfmRed,
-                            modifier = Modifier
-                                .size(20.dp)
-                                .align(Alignment.TopEnd)
-                                .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
-                        ) {
-                            Text(
-                                text = if (cartItemCount > 99) "99+" else cartItemCount.toString(),
-                                color = Color.White,
-                                style = MaterialTheme.typography.labelSmall.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp
-                                ),
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(2.dp)
-                            )
-                        }
                     }
                 }
             },
@@ -390,8 +379,7 @@ private fun SearchSection(
                 onQueryChange = onSearchQueryChange,
                 onSearch = { /* Perform search */ },
                 placeholder = "Search products, SKU, or barcode",
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier.fillMaxWidth()
             )
         }
 
@@ -637,10 +625,16 @@ private fun ProductsContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         items(items) { item ->
+            // Debug log for each item
+            if (!item.variations.isNullOrEmpty() || !item.modifierGroups.isNullOrEmpty()) {
+                Log.d(TAG, "Rendering card for: ${item.name} - Variations: ${item.variations?.size}, Modifiers: ${item.modifierGroups?.size}")
+            }
+
             BusinessTypeAwareProductCard(
                 item = item,
                 businessTypeConfig = businessTypeConfig,
                 onClick = {
+                    Log.d(TAG, "Product clicked: ${item.name} (${item.id})")
                     onProductClick(item)
                 }
             )
@@ -684,7 +678,7 @@ private fun FloatingActionButtons(
             modifier = Modifier.shadow(elevation = 6.dp, shape = CircleShape)
         ) {
             Icon(
-                imageVector = Icons.Default.QrCode,
+                imageVector = Icons.Default.Add,
                 contentDescription = "Add Custom Item",
                 modifier = Modifier.size(24.dp)
             )
@@ -692,6 +686,97 @@ private fun FloatingActionButtons(
             Text(
                 text = "Custom",
                 fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
+/**
+ * Bottom sheet for adding custom items
+ */
+@Composable
+private fun AddCustomItemBottomSheet(
+    onDismiss: () -> Unit,
+    onAddItem: (CustomItem) -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var price by remember { mutableStateOf("") }
+    var barcode by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+    ) {
+        // Handle
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .width(40.dp)
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "Add Custom Item",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Item Name") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = price,
+            onValueChange = { price = it },
+            label = { Text("Price") },
+            prefix = { Text("AED ") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = barcode,
+            onValueChange = { barcode = it },
+            label = { Text("Barcode (Optional)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Cancel")
+            }
+
+            RfmPrimaryButton(
+                text = "Add Item",
+                onClick = {
+                    val priceValue = price.toDoubleOrNull() ?: 0.0
+                    if (name.isNotBlank() && priceValue > 0) {
+                        onAddItem(CustomItem(name, priceValue, barcode.ifBlank { null }))
+                    }
+                },
+                modifier = Modifier.weight(1f),
+                enabled = name.isNotBlank() && price.toDoubleOrNull() != null
             )
         }
     }

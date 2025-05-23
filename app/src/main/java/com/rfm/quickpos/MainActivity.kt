@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
@@ -137,6 +138,24 @@ class MainActivity : ComponentActivity() {
             RFMQuickPOSTheme {
                 MainScreen()
             }
+        }
+    }
+
+    @Composable
+    fun DebugCatalogData() {
+        val catalogRepository = (LocalContext.current.applicationContext as QuickPOSApplication).catalogRepository
+        val items by catalogRepository.items.collectAsState()
+
+        LaunchedEffect(items) {
+            Log.d("DEBUG", "=== CATALOG DATA DEBUG ===")
+            items.forEach { item ->
+                Log.d("DEBUG", "Item: ${item.name}")
+                Log.d("DEBUG", "  - Price: ${item.price}")
+                Log.d("DEBUG", "  - Active: ${item.active}")
+                Log.d("DEBUG", "  - Variations: ${item.variations}")
+                Log.d("DEBUG", "  - ModifierGroups: ${item.modifierGroups}")
+            }
+            Log.d("DEBUG", "=== END DEBUG ===")
         }
     }
 

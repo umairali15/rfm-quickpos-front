@@ -2,6 +2,7 @@
 
 package com.rfm.quickpos.presentation.features.catalog
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,16 +43,26 @@ fun ItemDetailScreenWithVariations(
     onAddToCart: (CartItemWithModifiers) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Collect data from repository
+    // Collect items from repository
     val items by catalogRepository.items.collectAsState()
-    val businessTypeConfig by catalogRepository.businessTypeConfig.collectAsState()
 
-    // Find the item
-    val item = items.find { it.id == itemId }
+    // Find the specific item
+    val item = remember(itemId, items) {
+        items.find { it.id == itemId }.also { foundItem ->
+            if (foundItem != null) {
+                Log.d("ItemDetail", "Found item: ${foundItem.name}")
+                Log.d("ItemDetail", "Variations: ${foundItem.variations?.size ?: 0}")
+                Log.d("ItemDetail", "Modifier Groups: ${foundItem.modifierGroups?.size ?: 0}")
+            } else {
+                Log.e("ItemDetail", "Item not found with ID: $itemId")
+            }
+        }
+    }
 
-    // Handle navigation if item not found
+    // If item not found, close the screen
     if (item == null) {
         LaunchedEffect(Unit) {
+            Log.e("ItemDetail", "Closing screen - item not found")
             onClose()
         }
         return
@@ -259,6 +270,7 @@ fun ItemDetailScreenWithVariations(
             }
 
             // Business type specific info if any
+            val businessTypeConfig = null
             BusinessTypeItemInfo(item, businessTypeConfig)
 
             Spacer(modifier = Modifier.height(120.dp)) // Space for bottom bar

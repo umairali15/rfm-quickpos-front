@@ -2,6 +2,7 @@
 
 package com.rfm.quickpos.presentation.common.components
 
+import android.util.Log
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -49,16 +50,22 @@ fun BusinessTypeAwareProductCard(
         price = "AED ${String.format("%.2f", item.price)}",
         onClick = onClick,
         imageUrl = item.imageUrl,
-        discountPercentage = null, // Add discount logic as needed
+        discountPercentage = null,
         modifier = modifier,
         additionalContent = {
-            // Business type specific additional content
-            when {
-                // Show variations indicator first
-                hasVariations -> {
+            // Add debug logging
+            if (hasVariations || hasModifiers) {
+                Log.d("ProductCard", "${item.name}: Variations=$hasVariations, Modifiers=$hasModifiers")
+            }
+
+            Column(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                // Show variations indicator
+                if (hasVariations) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(vertical = 2.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.AutoAwesome,
@@ -76,86 +83,90 @@ fun BusinessTypeAwareProductCard(
                     }
                 }
 
-                // For restaurant items, show preparation time and allergens
-                hasAllergens || item.preparationTime != null -> {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                // Show modifiers indicator
+                if (hasModifiers) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(vertical = 2.dp)
                     ) {
-                        // Show preparation time if available
-                        item.preparationTime?.let {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Schedule,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(end = 4.dp)
-                                )
-                                Text(
-                                    text = "$it min",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                        Icon(
+                            imageVector = Icons.Default.LocalDining,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.secondary,
+                            modifier = Modifier
+                                .padding(end = 4.dp)
+                                .size(16.dp)
+                        )
+                        Text(
+                            text = "Customizable",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
 
-                            Spacer(modifier = Modifier.height(4.dp))
+                // Restaurant-specific indicators
+                if (item.preparationTime != null || hasAllergens) {
+                    // Show preparation time
+                    item.preparationTime?.let {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .size(16.dp)
+                            )
+                            Text(
+                                text = "$it min",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
+                    }
 
-                        // Show allergens if available
-                        if (hasAllergens) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.padding(end = 4.dp)
-                                )
-                                Text(
-                                    text = "Allergens",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-
-                        // Show if item has modifiers
-                        if (hasModifiers) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.LocalDining,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(end = 4.dp)
-                                )
-                                Text(
-                                    text = "Customizable",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+                    // Show allergens warning
+                    if (hasAllergens) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .size(16.dp)
+                            )
+                            Text(
+                                text = "Contains allergens",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                 }
 
-                // For service items, show duration
-                isServiceItem && item.duration != null -> {
+                // Service-specific indicators
+                if (isServiceItem && item.duration != null) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        modifier = Modifier.padding(vertical = 2.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Schedule,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(end = 4.dp)
+                            tint = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier
+                                .padding(end = 4.dp)
+                                .size(16.dp)
                         )
 
-                        // Format duration (e.g., "1h 30m" for 90 minutes)
                         val hours = item.duration!! / 60
                         val minutes = item.duration!! % 60
                         val durationText = if (hours > 0) {
@@ -167,7 +178,7 @@ fun BusinessTypeAwareProductCard(
                         Text(
                             text = durationText,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }

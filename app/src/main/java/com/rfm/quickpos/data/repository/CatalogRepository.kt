@@ -367,24 +367,49 @@ class CatalogRepository(
                 return false
             }
 
-            // Log items with new structure
-            itemsResponse.data.forEach { item ->
+            // Enhanced logging to debug variations/modifiers
+            Log.d(TAG, "=== CATALOG SYNC DEBUG ===")
+            Log.d(TAG, "Total items received: ${itemsResponse.data.size}")
+
+
+
+            itemsResponse.data.forEachIndexed { index, item ->
+                Log.d(TAG, "Item #$index: ${item.name} (ID: ${item.id})")
                 Log.d("CatalogRepo", "Item: ${item.name}")
                 Log.d("CatalogRepo", "Has variations: ${!item.variations.isNullOrEmpty()}")
                 Log.d("CatalogRepo", "Variations count: ${item.variations?.size ?: 0}")
                 Log.d("CatalogRepo", "Has modifier groups: ${!item.modifierGroups.isNullOrEmpty()}")
                 Log.d("CatalogRepo", "Modifier groups count: ${item.modifierGroups?.size ?: 0}")
 
-                // Log variation details
-                item.variations?.forEach { variation ->
-                    Log.d("CatalogRepo", "  Variation: ${variation.name} (${variation.options.size} options)")
+                // Log variations
+                if (item.variations != null) {
+                    Log.d(TAG, "  Variations: ${item.variations.size}")
+                    item.variations.forEach { variation ->
+                        Log.d(TAG, "    - ${variation.name} (${variation.options.size} options)")
+                        variation.options.forEach { option ->
+                            Log.d(TAG, "      * ${option.name} (+${option.priceAdjustment})")
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "  Variations: NULL")
                 }
 
-                // Log modifier group details
-                item.modifierGroups?.forEach { group ->
-                    Log.d("CatalogRepo", "  Modifier Group: ${group.name} (${group.modifiers.size} modifiers)")
+                // Log modifier groups
+                if (item.modifierGroups != null) {
+                    Log.d(TAG, "  Modifier Groups: ${item.modifierGroups.size}")
+                    item.modifierGroups.forEach { group ->
+                        Log.d(TAG, "    - ${group.name} (${group.modifiers.size} modifiers)")
+                        group.modifiers.forEach { modifier ->
+                            Log.d(TAG, "      * ${modifier.name} (+${modifier.priceAdjustment})")
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "  Modifier Groups: NULL")
                 }
             }
+            Log.d(TAG, "=== END CATALOG SYNC DEBUG ===")
+
+            _items.value = itemsResponse.data
 
             _items.value = itemsResponse.data
             Log.d(TAG, "Synced ${itemsResponse.data.size} items")
