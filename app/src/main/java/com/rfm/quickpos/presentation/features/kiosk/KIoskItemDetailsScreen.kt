@@ -296,21 +296,20 @@ fun KioskItemDetailScreen(
                                             priceAdjustment = entry.value.priceAdjustment
                                         )
                                     },
-                                    // Convert selected modifiers to the expected format
+                                    // FIX: Convert selected modifiers to List<ModifierData> with groupId
                                     modifiers = modifierGroups.flatMap { group ->
                                         group.modifiers.filter { modifier ->
                                             selectedModifiers[group.id]?.contains(modifier.id) == true
                                         }.map { modifier ->
-                                            group.name to com.rfm.quickpos.data.remote.models.Modifier(
-                                                id = modifier.id,
-                                                name = modifier.name,
-                                                priceAdjustment = modifier.priceAdjustment,
-                                                displayOrder = modifier.displayOrder,
-                                                isDefault = modifier.isDefault,
-                                                available = modifier.available
+                                            CartItemWithModifiers.ModifierData(
+                                                groupId = group.id,  // INCLUDE GROUP ID
+                                                groupName = group.name,
+                                                modifierId = modifier.id,
+                                                modifierName = modifier.name,
+                                                priceAdjustment = modifier.priceAdjustment
                                             )
                                         }
-                                    }.toMap()
+                                    }
                                 )
 
                                 cartRepository.addCartItem(cartItem)
@@ -326,6 +325,7 @@ fun KioskItemDetailScreen(
     }
 }
 
+// Keep the rest of the helper composables the same...
 /**
  * Item header card with larger layout for kiosk
  */

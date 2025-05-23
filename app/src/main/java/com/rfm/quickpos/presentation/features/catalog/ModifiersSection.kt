@@ -12,105 +12,93 @@ import androidx.compose.ui.unit.dp
 import com.rfm.quickpos.data.remote.models.ModifierGroup
 
 /**
- * Section to display and select item modifiers
+ * Component to display and select modifiers
  */
 @Composable
 fun ModifiersSection(
     modifierGroups: List<ModifierGroup>,
-    selectedModifiers: Map<String, Set<String>>, // groupId to set of selected modifier ids
-    onModifierToggled: (groupId: String, modifierId: String, isSelected: Boolean) -> Unit,
+    selectedModifiers: Map<String, Set<String>>,
+    onModifierToggled: (String, String, Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-    ) {
+    Column(modifier = modifier.padding(horizontal = 16.dp)) {
         Text(
-            text = "Add-ons",
-            style = MaterialTheme.typography.titleMedium,
+            text = "Customize",
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        modifierGroups.sortedBy { it.displayOrder }.forEach { group ->
-            ModifierGroupSection(
-                group = group,
-                selectedModifierIds = selectedModifiers[group.id] ?: emptySet(),
-                onModifierToggled = { modifierId, isSelected ->
-                    onModifierToggled(group.id, modifierId, isSelected)
-                }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
-}
-
-@Composable
-private fun ModifierGroupSection(
-    group: ModifierGroup,
-    selectedModifierIds: Set<String>,
-    onModifierToggled: (modifierId: String, isSelected: Boolean) -> Unit
-) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(bottom = 8.dp)
+        modifierGroups.forEach { group ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
             ) {
-                Text(
-                    text = group.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.weight(1f)
-                )
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column {
+                            Text(
+                                text = group.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium
+                            )
 
-                if (group.isRequired) {
-                    Text(
-                        text = "Required",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                } else if (group.maxSelections > 1) {
-                    Text(
-                        text = "Select up to ${group.maxSelections}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+                            val selectionText = when {
+                                group.minSelections > 0 && group.maxSelections == 1 -> "Choose one"
+                                group.minSelections > 0 -> "Choose at least ${group.minSelections}"
+                                group.maxSelections > 1 -> "Choose up to ${group.maxSelections}"
+                                else -> "Optional"
+                            }
 
-            group.modifiers.sortedBy { it.displayOrder }.forEach { modifier ->
-                ModifierItem(
-                    modifier = modifier,
-                    isSelected = selectedModifierIds.contains(modifier.id),
-                    onToggled = { isSelected ->
-                        // Check if we can select more
-                        if (!isSelected || selectedModifierIds.size < group.maxSelections) {
-                            onModifierToggled(modifier.id, isSelected)
+                            Text(
+                                text = selectionText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    },
-                    enabled = modifier.available
-                )
+
+                        if (group.isRequired) {
+                            Text(
+                                text = "Required",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    group.modifiers.forEach { modifier ->
+                        val isSelected = selectedModifiers[group.id]?.contains(modifier.id) == true
+
+                        ModifierOption(
+                            modifier = modifier,
+                            isSelected = isSelected,
+                            onToggle = { isChecked ->
+                                onModifierToggled(group.id, modifier.id, isChecked)
+                            }
+                        )
+                    }
+                }
             }
         }
     }
 }
 
+/**
+ * Individual modifier option
+ */
 @Composable
-private fun ModifierItem(
+private fun ModifierOption(
     modifier: com.rfm.quickpos.data.remote.models.Modifier,
     isSelected: Boolean,
-    onToggled: (Boolean) -> Unit,
-    enabled: Boolean = true
+    onToggle: (Boolean) -> Unit
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -120,22 +108,23 @@ private fun ModifierItem(
     ) {
         Checkbox(
             checked = isSelected,
-            onCheckedChange = onToggled,
-            enabled = enabled
+            onCheckedChange = onToggle
         )
 
-        Text(
-            text = modifier.name,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 8.dp)
-        )
+        Spacer(modifier = Modifier.width(8.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = modifier.name,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
 
         if (modifier.priceAdjustment != 0.0) {
             Text(
                 text = "${if (modifier.priceAdjustment > 0) "+" else ""}AED ${String.format("%.2f", modifier.priceAdjustment)}",
                 style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
                 color = if (modifier.priceAdjustment > 0)
                     MaterialTheme.colorScheme.primary
                 else

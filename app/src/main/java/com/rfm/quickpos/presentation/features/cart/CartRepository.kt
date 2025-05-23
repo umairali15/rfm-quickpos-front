@@ -4,6 +4,8 @@ package com.rfm.quickpos.presentation.features.cart
 
 import androidx.compose.runtime.mutableStateOf
 import com.rfm.quickpos.data.remote.models.Item
+import com.rfm.quickpos.data.remote.models.ItemVariationOption
+import com.rfm.quickpos.data.remote.models.VariationOption
 import com.rfm.quickpos.presentation.features.catalog.CustomItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,23 +26,60 @@ class CartRepository {
     val cartTotal: StateFlow<Double> = _cartTotal.asStateFlow()
 
     /**
-     * Add item to cart from catalog
+     * Add item to cart from catalog with proper variations and modifiers
      */
-    fun addItemToCart(item: Item, quantity: Int = 1, modifiers: List<String> = emptyList()) {
+    fun addItemToCart(
+        item: Item,
+        quantity: Int = 1,
+        selectedVariations: Map<String, ItemVariationOption> = emptyMap(),
+        selectedModifierIds: Map<String, Set<String>> = emptyMap() // groupId to set of modifierIds
+    ) {
+        // Convert variations to the expected format
+        val variationsForCart = selectedVariations.mapValues { entry ->
+            VariationOption(
+                name = entry.value.name,
+                priceAdjustment = entry.value.priceAdjustment
+            )
+        }
+
+        // Convert modifiers to the expected format
+        val modifiersForCart = item.modifierGroups?.flatMap { group ->
+            group.modifiers.filter { modifier ->
+                selectedModifierIds[group.id]?.contains(modifier.id) == true
+            }.map { modifier ->
+                CartItemWithModifiers.ModifierData(
+                    groupId = group.id,
+                    groupName = group.name,
+                    modifierId = modifier.id,
+                    modifierName = modifier.name,
+                    priceAdjustment = modifier.priceAdjustment
+                )
+            }
+        } ?: emptyList()
+
         val cartItem = CartItemWithModifiers(
             id = item.id,
             name = item.name,
             price = item.price,
             quantity = quantity,
-            modifiers = modifiers.map { modifierId ->
-                // This should be filled from actual modifier data
-                CartItemWithModifiers.ModifierData(
-                    id = modifierId,
-                    name = "Custom Modifier",
-                    price = 0.0,
-                    groupName = "Custom"
-                )
-            }
+            variations = variationsForCart,
+            modifiers = modifiersForCart
+        )
+
+        addCartItem(cartItem)
+    }
+
+    /**
+     * Simple add to cart for items without variations/modifiers
+     */
+    fun addSimpleItemToCart(item: Item, quantity: Int = 1) {
+        val cartItem = CartItemWithModifiers(
+            id = item.id,
+            name = item.name,
+            price = item.price,
+            quantity = quantity,
+            variations = emptyMap(),
+            modifiers = emptyList()
         )
 
         addCartItem(cartItem)
@@ -55,6 +94,7 @@ class CartRepository {
             name = customItem.name,
             price = customItem.price,
             quantity = 1,
+            variations = emptyMap(),
             modifiers = emptyList(),
             notes = customItem.notes.toString()
         )
@@ -65,12 +105,14 @@ class CartRepository {
     /**
      * Add cart item and update totals
      */
-    internal fun addCartItem(cartItem: CartItemWithModifiers) {
+    fun addCartItem(cartItem: CartItemWithModifiers) {
         val currentItems = _cartItems.value.toMutableList()
 
-        // Check if item already exists
+        // Check if item already exists with same variations and modifiers
         val existingItemIndex = currentItems.indexOfFirst {
-            it.id == cartItem.id && it.modifiers == cartItem.modifiers
+            it.id == cartItem.id &&
+                    it.variations == cartItem.variations &&
+                    it.modifiers == cartItem.modifiers
         }
 
         if (existingItemIndex != -1) {
@@ -129,9 +171,25 @@ class CartRepository {
         val items = _cartItems.value
         _cartCount.value = items.sumOf { it.quantity }
         _cartTotal.value = items.sumOf { item ->
-            val itemPrice = item.price + item.modifiers.sumOf { it.price }
-            itemPrice * item.quantity
+            // Calculate base price + variations + modifiers
+            val basePrice = item.price
+            val variationsPrice = item.variations.values.sumOf { it.priceAdjustment }
+            val modifiersPrice = item.modifiers.sumOf { it.priceAdjustment }
+            val totalUnitPrice = basePrice + variationsPrice + modifiersPrice
+
+            totalUnitPrice * item.quantity
         }
     }
-}
 
+    /**
+     * Get total price for a specific cart item
+     */
+    fun getItemTotal(item: CartItemWithModifiers): Double {
+        val basePrice = item.price
+        val variationsPrice = item.variations.values.sumOf { it.priceAdjustment }
+        val modifiersPrice = item.modifiers.sumOf { it.priceAdjustment }
+        val totalUnitPrice = basePrice + variationsPrice + modifiersPrice
+
+        return totalUnitPrice * item.quantity
+    }
+}
