@@ -51,17 +51,6 @@ import com.rfm.quickpos.presentation.common.theme.RFMQuickPOSTheme
 import com.rfm.quickpos.presentation.common.theme.TextFieldShape
 import com.rfm.quickpos.presentation.common.theme.posColors
 
-/**
- * Cart item data class
- */
-data class CartItem(
-    val id: String,
-    val name: String,
-    val price: Double,
-    val quantity: Int,
-    val discountPercentage: Int? = null,
-    val notes: String? = null
-)
 
 /**
  * Cart screen state

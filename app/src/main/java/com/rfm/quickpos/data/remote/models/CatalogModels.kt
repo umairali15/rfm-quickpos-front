@@ -71,7 +71,7 @@ data class ItemResponse(
 )
 
 /**
- * Item (product) model - Updated to match backend structure
+ * Item (product) model - FIXED to properly handle variations and modifiers
  */
 data class Item(
     val id: String,
@@ -96,7 +96,7 @@ data class Item(
     @SerializedName("combo_items") val comboItems: List<String>? = null,  // Array of item IDs in combo
     @SerializedName("service_level") val serviceLevel: String? = null,  // For service businesses
 
-    // Direct variations and modifier groups (new structure from backend)
+    // FIXED: Direct variations and modifier groups from backend
     val variations: List<ItemVariation>? = null,
     @SerializedName("modifier_groups") val modifierGroups: List<ModifierGroup>? = null,
 
@@ -108,7 +108,7 @@ data class Item(
 )
 
 /**
- * Item variation (new structure from backend)
+ * Item variation - FIXED structure to match backend
  */
 data class ItemVariation(
     @SerializedName("link_id") val linkId: String,
@@ -116,11 +116,11 @@ data class ItemVariation(
     val name: String,
     @SerializedName("is_required") val isRequired: Boolean = false,
     @SerializedName("display_order") val displayOrder: Int = 0,
-    val options: List<ItemVariationOption>
+    val options: List<ItemVariationOption> = emptyList()
 )
 
 /**
- * Item variation option
+ * Item variation option - FIXED structure
  */
 data class ItemVariationOption(
     val id: String,
@@ -178,7 +178,7 @@ data class ModifierGroupResponse(
 )
 
 /**
- * Modifier group model (updated to match backend)
+ * Modifier group model - FIXED to match backend structure
  */
 data class ModifierGroup(
     val id: String,
@@ -187,13 +187,13 @@ data class ModifierGroup(
     @SerializedName("max_selections") val maxSelections: Int = 1,
     @SerializedName("is_required") val isRequired: Boolean = false,
     @SerializedName("display_order") val displayOrder: Int = 0,
-    val modifiers: List<Modifier>,
+    val modifiers: List<Modifier> = emptyList(),
     @SerializedName("created_at") val createdAt: String? = null,
     @SerializedName("updated_at") val updatedAt: String? = null
 )
 
 /**
- * Modifier model (updated to match backend)
+ * Modifier model - FIXED to match backend structure
  */
 data class Modifier(
     val id: String,

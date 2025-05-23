@@ -49,13 +49,18 @@ interface ApiService {
     suspend fun getCategories(): CategoryResponse
 
     /**
-     * Get items (products)
+     * FIXED: Get items with variations and modifiers embedded
+     * The backend should return items with variations and modifier_groups included
      */
     @GET("api/catalog/items")
-    suspend fun getItems(@Query("category_id") categoryId: String? = null): ItemResponse
+    suspend fun getItems(
+        @Query("category_id") categoryId: String? = null,
+        @Query("include_variations") includeVariations: Boolean = true,
+        @Query("include_modifiers") includeModifiers: Boolean = true
+    ): ItemResponse
 
     /**
-     * Get modifier groups (for restaurant items)
+     * Get modifier groups (legacy endpoint for backward compatibility)
      */
     @GET("api/catalog/modifier-groups")
     suspend fun getModifierGroups(): ModifierGroupResponse

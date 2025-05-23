@@ -29,6 +29,7 @@ import com.rfm.quickpos.data.remote.models.Item
 
 /**
  * Business type-aware product card that adapts display based on the business type
+ * FIXED to properly detect and display variations/modifiers
  */
 @Composable
 fun BusinessTypeAwareProductCard(
@@ -37,12 +38,34 @@ fun BusinessTypeAwareProductCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Determine business type-specific UI
-    val itemType = item.itemType ?: ""
-    val hasModifiers = !item.modifierGroups.isNullOrEmpty()
+    // FIXED: Properly check for variations and modifiers
     val hasVariations = !item.variations.isNullOrEmpty()
+    val hasModifiers = !item.modifierGroups.isNullOrEmpty()
     val hasAllergens = item.allergens?.isNotEmpty() == true
-    val isServiceItem = itemType == "service" || item.pricingType == "time-based"
+    val isServiceItem = item.itemType == "service" || item.pricingType == "time-based"
+
+    // FIXED: Enhanced debug logging
+    Log.d("BusinessTypeAwareProductCard", "=== PRODUCT CARD DEBUG ===")
+    Log.d("BusinessTypeAwareProductCard", "Item: ${item.name} (ID: ${item.id})")
+    Log.d("BusinessTypeAwareProductCard", "Variations: ${item.variations}")
+    Log.d("BusinessTypeAwareProductCard", "ModifierGroups: ${item.modifierGroups}")
+    Log.d("BusinessTypeAwareProductCard", "HasVariations: $hasVariations")
+    Log.d("BusinessTypeAwareProductCard", "HasModifiers: $hasModifiers")
+    Log.d("BusinessTypeAwareProductCard", "Variation count: ${item.variations?.size ?: 0}")
+    Log.d("BusinessTypeAwareProductCard", "Modifier group count: ${item.modifierGroups?.size ?: 0}")
+
+    // If we have variations or modifiers, log them in detail
+    if (hasVariations) {
+        item.variations?.forEachIndexed { index, variation ->
+            Log.d("BusinessTypeAwareProductCard", "  Variation $index: ${variation.name} (${variation.options.size} options)")
+        }
+    }
+
+    if (hasModifiers) {
+        item.modifierGroups?.forEachIndexed { index, group ->
+            Log.d("BusinessTypeAwareProductCard", "  Modifier Group $index: ${group.name} (${group.modifiers.size} modifiers)")
+        }
+    }
 
     // Delegate to the standard ProductCard but add business-specific attributes
     ProductCard(
@@ -53,15 +76,11 @@ fun BusinessTypeAwareProductCard(
         discountPercentage = null,
         modifier = modifier,
         additionalContent = {
-            // Add debug logging
-            if (hasVariations || hasModifiers) {
-                Log.d("ProductCard", "${item.name}: Variations=$hasVariations, Modifiers=$hasModifiers")
-            }
-
+            // FIXED: Always show debug info and actual indicators
             Column(
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
             ) {
-                // Show variations indicator
+                // FIXED: Show variations indicator with more prominent styling
                 if (hasVariations) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -76,14 +95,15 @@ fun BusinessTypeAwareProductCard(
                                 .size(16.dp)
                         )
                         Text(
-                            text = "Options available",
+                            text = "${item.variations?.size ?: 0} Variations",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
 
-                // Show modifiers indicator
+                // FIXED: Show modifiers indicator with more prominent styling
                 if (hasModifiers) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -98,15 +118,25 @@ fun BusinessTypeAwareProductCard(
                                 .size(16.dp)
                         )
                         Text(
-                            text = "Customizable",
+                            text = "${item.modifierGroups?.size ?: 0} Add-ons",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.secondary
+                            color = MaterialTheme.colorScheme.secondary,
+                            fontWeight = FontWeight.Medium
                         )
                     }
                 }
 
+                // FIXED: Add a debug indicator to show that we're checking for variations/modifiers
+                if (!hasVariations && !hasModifiers) {
+                    Text(
+                        text = "No customizations",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                }
+
                 // Restaurant-specific indicators
-                if (item.preparationTime != null || hasAllergens) {
+                if (businessTypeConfig?.name == "restaurant") {
                     // Show preparation time
                     item.preparationTime?.let {
                         Row(

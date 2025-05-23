@@ -24,7 +24,7 @@ private const val TAG = "DeviceRepository"
 
 /**
  * Repository for device management operations
- * Enhanced to better integrate with backend UI mode selection
+ * FIXED to better handle backend data mapping
  */
 class DeviceRepository(
     private val apiService: ApiService,
@@ -115,23 +115,8 @@ class DeviceRepository(
             Log.d(TAG, "Registration response: $response")
 
             if (response.success && response.device != null) {
-                // Create a DeviceData object from the response
-                val deviceData = DeviceData(
-                    id = response.device.id,
-                    alias = response.device.alias,
-                    branchId = response.device.branchId,
-                    // If these are null, use default values
-                    companyId = response.device.companyId ?: "",
-                    companySchema = response.device.companySchema ?: "company_default",
-                    tableId = response.device.tableId,
-                    isActive = response.device.isActive,
-                    // FIX: Use appMode instead of uiMode
-                    appMode = response.device.appMode ?: UiMode.CASHIER.name,
-                    serialNumber = response.device.serialNumber ?: deviceSerialNumber
-                )
-
-                // Save device info
-                credentialStore.saveDeviceInfo(deviceData)
+                // Save device info - FIXED to properly handle all fields
+                saveDeviceDataToCredentialStore(response.device)
 
                 // Save token if provided
                 if (response.token != null) {
@@ -141,24 +126,15 @@ class DeviceRepository(
                 // Save serial number again to ensure it's consistent
                 credentialStore.saveSerialNumber(deviceSerialNumber)
 
-                // Update UI mode
-                val newMode = deviceData.appMode?.let {
-                    try {
-                        UiMode.valueOf(it.uppercase())
-                    } catch (e: IllegalArgumentException) {
-                        UiMode.CASHIER  // Default to cashier if invalid
-                    }
-                } ?: UiMode.CASHIER
+                // Update UI mode based on device response
+                updateUiModeFromDeviceData(response.device)
 
-                _uiMode.value = newMode
-                credentialStore.saveUiMode(newMode)
-
-                Log.d(TAG, "Device registered successfully: ${deviceData.id}, Mode: $newMode")
+                Log.d(TAG, "Device registered successfully: ${response.device.id}")
 
                 // Start periodic UI mode checking after successful registration
                 startPeriodicUiModeCheck()
 
-                val success = DeviceRegistrationState.Success(deviceData.id)
+                val success = DeviceRegistrationState.Success(response.device.id)
                 _deviceRegistrationState.value = success
                 success
             } else {
@@ -178,7 +154,7 @@ class DeviceRepository(
 
     /**
      * Authenticate a previously registered device
-     * Enhanced to better handle UI mode from the backend
+     * FIXED to properly handle backend response structure
      */
     suspend fun authenticateDevice(): DeviceRegistrationState {
         val deviceId = credentialStore.getDeviceId() ?:
@@ -194,32 +170,30 @@ class DeviceRepository(
             val response = apiService.authenticateDevice(request)
 
             Log.d(TAG, "Raw auth response: $response")
+            Log.d(TAG, "Response success: ${response.success}")
+            Log.d(TAG, "Response appMode: ${response.appMode}")
+            Log.d(TAG, "Device data: ${response.device}")
 
             if (response.success) {
-                // Log the complete response and the top-level appMode field
-                Log.d(TAG, "Device data received from server: ${response.device}")
-                Log.d(TAG, "Top-level appMode from response: ${response.appMode}")
+                // FIXED: Save all device information properly
+                saveDeviceDataToCredentialStore(response.device)
 
-                // Update device info
-                credentialStore.saveDeviceInfo(response.device)
-
-                // Add null check before saving token
+                // Save token if provided
                 if (response.token != null) {
                     credentialStore.saveAuthToken(response.token)
                 } else {
                     Log.w(TAG, "Server returned null token for successful authentication")
                 }
 
-                // FIX: Get UI mode from the response's top-level appMode field
-                val serverUiMode = response.appMode?.let {
+                // FIXED: Get UI mode from response.appMode (root level) OR device.appMode
+                val serverUiMode = (response.appMode ?: response.device.appMode)?.let {
                     try {
-                        // Convert to uppercase for enum
                         val mode = it.uppercase()
-                        Log.d(TAG, "Server returned appMode: $it (will convert to $mode)")
+                        Log.d(TAG, "Server returned appMode: $it (converting to $mode)")
                         UiMode.valueOf(mode)
                     } catch (e: IllegalArgumentException) {
                         Log.e(TAG, "Invalid UI mode from server: $it", e)
-                        null // Invalid mode name
+                        null
                     }
                 }
 
@@ -247,6 +221,58 @@ class DeviceRepository(
             _deviceRegistrationState.value = error
             error
         }
+    }
+
+    /**
+     * FIXED: Properly save device data to credential store with all fields
+     */
+    private fun saveDeviceDataToCredentialStore(deviceData: DeviceData) {
+        Log.d(TAG, "Saving device data: $deviceData")
+
+        // Create properly mapped device data with all available fields
+        val mappedDeviceData = DeviceData(
+            id = deviceData.id,
+            alias = deviceData.alias,
+            branchId = deviceData.branchId ?: deviceData.branch?.id,
+            companyId = deviceData.companyId ?: deviceData.branch?.companyId,
+            companySchema = deviceData.companySchema,
+            tableId = deviceData.tableId,
+            isActive = deviceData.isActive,
+            serialNumber = deviceData.serialNumber ?: credentialStore.getSerialNumber(),
+            model = deviceData.model,
+            appVersion = deviceData.appVersion,
+            isDashboardDevice = deviceData.isDashboardDevice,
+            lastSync = deviceData.lastSync,
+            settings = deviceData.settings,
+            createdAt = deviceData.createdAt,
+            updatedAt = deviceData.updatedAt,
+            appMode = deviceData.appMode,
+            branch = deviceData.branch
+        )
+
+        credentialStore.saveDeviceInfo(mappedDeviceData)
+
+        Log.d(TAG, "Device data saved with branchId: ${mappedDeviceData.branchId}, " +
+                "companyId: ${mappedDeviceData.companyId}, appMode: ${mappedDeviceData.appMode}")
+    }
+
+    /**
+     * FIXED: Update UI mode from device data
+     */
+    private fun updateUiModeFromDeviceData(deviceData: DeviceData) {
+        val newMode = deviceData.appMode?.let {
+            try {
+                UiMode.valueOf(it.uppercase())
+            } catch (e: IllegalArgumentException) {
+                Log.e(TAG, "Invalid UI mode from device data: $it", e)
+                UiMode.CASHIER  // Default to cashier if invalid
+            }
+        } ?: UiMode.CASHIER
+
+        _uiMode.value = newMode
+        credentialStore.saveUiMode(newMode)
+
+        Log.d(TAG, "UI mode updated to: $newMode from device data")
     }
 
     /**

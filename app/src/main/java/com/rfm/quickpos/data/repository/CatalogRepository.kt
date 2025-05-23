@@ -29,7 +29,7 @@ private const val CATALOG_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000 // 24 hours
 
 /**
  * Repository for catalog and business data
- * Handles data synchronization and caching
+ * FIXED to properly handle variations and modifiers
  */
 class CatalogRepository(
     private val apiService: ApiService,
@@ -126,6 +126,9 @@ class CatalogRepository(
 
                         Log.d(TAG, "Loaded cached catalog data. Categories: ${_categories.value.size}, " +
                                 "Items: ${_items.value.size}, Timestamp: ${Date(catalogCache.timestamp)}")
+
+                        // FIXED: Log variations and modifiers from cached data
+                        logVariationsAndModifiersDebug(_items.value)
                     }
                 }
             } else {
@@ -337,8 +340,7 @@ class CatalogRepository(
     }
 
     /**
-     * Sync all catalog data
-     * This should be called once after login or when needed, not on every app start
+     * FIXED: Sync all catalog data with enhanced variations/modifiers handling
      */
     suspend fun syncCatalogData(forceRefresh: Boolean = false): Boolean {
         // Check if we need to refresh data
@@ -360,70 +362,44 @@ class CatalogRepository(
             _categories.value = categoriesResponse.data
             Log.d(TAG, "Synced ${categoriesResponse.data.size} categories")
 
-            // Fetch items
-            val itemsResponse = apiService.getItems()
+            // FIXED: Fetch items with explicit parameters for variations and modifiers
+            val itemsResponse = apiService.getItems(
+                categoryId = null, // Get all items
+                includeVariations = true,
+                includeModifiers = true
+            )
             if (!itemsResponse.success) {
                 _syncState.value = CatalogSyncState.Error("Failed to fetch items: ${itemsResponse.error}")
                 return false
             }
 
-            // Enhanced logging to debug variations/modifiers
-            Log.d(TAG, "=== CATALOG SYNC DEBUG ===")
+            // FIXED: Enhanced logging to debug variations/modifiers
+            Log.d(TAG, "=== CATALOG SYNC DEBUG - ENHANCED ===")
             Log.d(TAG, "Total items received: ${itemsResponse.data.size}")
 
+            // Log the raw JSON structure for debugging
+            val itemsJson = gson.toJson(itemsResponse.data)
+            Log.d(TAG, "Raw items JSON length: ${itemsJson.length}")
 
-
-            itemsResponse.data.forEachIndexed { index, item ->
-                Log.d(TAG, "Item #$index: ${item.name} (ID: ${item.id})")
-                Log.d("CatalogRepo", "Item: ${item.name}")
-                Log.d("CatalogRepo", "Has variations: ${!item.variations.isNullOrEmpty()}")
-                Log.d("CatalogRepo", "Variations count: ${item.variations?.size ?: 0}")
-                Log.d("CatalogRepo", "Has modifier groups: ${!item.modifierGroups.isNullOrEmpty()}")
-                Log.d("CatalogRepo", "Modifier groups count: ${item.modifierGroups?.size ?: 0}")
-
-                // Log variations
-                if (item.variations != null) {
-                    Log.d(TAG, "  Variations: ${item.variations.size}")
-                    item.variations.forEach { variation ->
-                        Log.d(TAG, "    - ${variation.name} (${variation.options.size} options)")
-                        variation.options.forEach { option ->
-                            Log.d(TAG, "      * ${option.name} (+${option.priceAdjustment})")
-                        }
-                    }
-                } else {
-                    Log.d(TAG, "  Variations: NULL")
-                }
-
-                // Log modifier groups
-                if (item.modifierGroups != null) {
-                    Log.d(TAG, "  Modifier Groups: ${item.modifierGroups.size}")
-                    item.modifierGroups.forEach { group ->
-                        Log.d(TAG, "    - ${group.name} (${group.modifiers.size} modifiers)")
-                        group.modifiers.forEach { modifier ->
-                            Log.d(TAG, "      * ${modifier.name} (+${modifier.priceAdjustment})")
-                        }
-                    }
-                } else {
-                    Log.d(TAG, "  Modifier Groups: NULL")
-                }
-            }
-            Log.d(TAG, "=== END CATALOG SYNC DEBUG ===")
-
-            _items.value = itemsResponse.data
+            logVariationsAndModifiersDebug(itemsResponse.data)
 
             _items.value = itemsResponse.data
             Log.d(TAG, "Synced ${itemsResponse.data.size} items")
 
             // Fetch modifier groups (legacy - for backward compatibility if needed)
-            // In the new structure, modifier groups come directly on items
             if (_businessTypeConfig.value?.supportsModifiers == true) {
-                val modifiersResponse = apiService.getModifierGroups()
-                if (!modifiersResponse.success) {
-                    Log.w(TAG, "Failed to fetch legacy modifier groups: ${modifiersResponse.error}")
-                    // Don't fail the sync, as modifiers now come with items
-                } else {
-                    _modifierGroups.value = modifiersResponse.data
-                    Log.d(TAG, "Synced ${modifiersResponse.data.size} legacy modifier groups")
+                try {
+                    val modifiersResponse = apiService.getModifierGroups()
+                    if (!modifiersResponse.success) {
+                        Log.w(TAG, "Failed to fetch legacy modifier groups: ${modifiersResponse.error}")
+                        // Don't fail the sync, as modifiers now come with items
+                    } else {
+                        _modifierGroups.value = modifiersResponse.data
+                        Log.d(TAG, "Synced ${modifiersResponse.data.size} legacy modifier groups")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Exception fetching legacy modifier groups", e)
+                    // Continue without legacy modifier groups
                 }
             } else {
                 Log.d(TAG, "Business type does not support modifiers, skipping modifier sync")
@@ -442,6 +418,60 @@ class CatalogRepository(
             _syncState.value = CatalogSyncState.Error("Failed to sync catalog data: ${e.message}")
             false
         }
+    }
+
+    /**
+     * FIXED: Enhanced debug logging for variations and modifiers
+     */
+    private fun logVariationsAndModifiersDebug(items: List<Item>) {
+        var itemsWithVariations = 0
+        var itemsWithModifiers = 0
+        var totalVariations = 0
+        var totalModifierGroups = 0
+
+        items.forEachIndexed { index, item ->
+            val hasVariations = !item.variations.isNullOrEmpty()
+            val hasModifiers = !item.modifierGroups.isNullOrEmpty()
+            val variationCount = item.variations?.size ?: 0
+            val modifierGroupCount = item.modifierGroups?.size ?: 0
+
+            if (hasVariations) itemsWithVariations++
+            if (hasModifiers) itemsWithModifiers++
+            totalVariations += variationCount
+            totalModifierGroups += modifierGroupCount
+
+            Log.d(TAG, "Item #$index: ${item.name} (ID: ${item.id})")
+            Log.d(TAG, "  - Has variations: $hasVariations (count: $variationCount)")
+            Log.d(TAG, "  - Has modifiers: $hasModifiers (count: $modifierGroupCount)")
+
+            // Log detailed variations
+            if (hasVariations) {
+                item.variations?.forEach { variation ->
+                    Log.d(TAG, "    Variation: ${variation.name} (${variation.options.size} options, required: ${variation.isRequired})")
+                    variation.options.forEach { option ->
+                        Log.d(TAG, "      Option: ${option.name} (+${option.priceAdjustment})")
+                    }
+                }
+            }
+
+            // Log detailed modifier groups
+            if (hasModifiers) {
+                item.modifierGroups?.forEach { group ->
+                    Log.d(TAG, "    Modifier Group: ${group.name} (${group.modifiers.size} modifiers, required: ${group.isRequired})")
+                    group.modifiers.forEach { modifier ->
+                        Log.d(TAG, "      Modifier: ${modifier.name} (+${modifier.priceAdjustment})")
+                    }
+                }
+            }
+        }
+
+        Log.d(TAG, "=== CATALOG SUMMARY ===")
+        Log.d(TAG, "Total items: ${items.size}")
+        Log.d(TAG, "Items with variations: $itemsWithVariations")
+        Log.d(TAG, "Items with modifiers: $itemsWithModifiers")
+        Log.d(TAG, "Total variations across all items: $totalVariations")
+        Log.d(TAG, "Total modifier groups across all items: $totalModifierGroups")
+        Log.d(TAG, "=== END CATALOG SYNC DEBUG ===")
     }
 
     /**

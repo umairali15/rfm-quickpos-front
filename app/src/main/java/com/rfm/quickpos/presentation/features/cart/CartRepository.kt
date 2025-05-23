@@ -2,20 +2,14 @@
 
 package com.rfm.quickpos.presentation.features.cart
 
-import androidx.compose.runtime.mutableStateOf
-import com.rfm.quickpos.data.remote.models.Item
-import com.rfm.quickpos.data.remote.models.ItemVariationOption
-import com.rfm.quickpos.data.remote.models.VariationOption
-import com.rfm.quickpos.presentation.features.catalog.CustomItem
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * Repository for managing cart state and operations
+ * Repository for managing cart state
  */
 class CartRepository {
-
     private val _cartItems = MutableStateFlow<List<CartItemWithModifiers>>(emptyList())
     val cartItems: StateFlow<List<CartItemWithModifiers>> = _cartItems.asStateFlow()
 
@@ -26,115 +20,39 @@ class CartRepository {
     val cartTotal: StateFlow<Double> = _cartTotal.asStateFlow()
 
     /**
-     * Add item to cart from catalog with proper variations and modifiers
+     * Add item to cart
      */
-    fun addItemToCart(
-        item: Item,
-        quantity: Int = 1,
-        selectedVariations: Map<String, ItemVariationOption> = emptyMap(),
-        selectedModifierIds: Map<String, Set<String>> = emptyMap() // groupId to set of modifierIds
-    ) {
-        // Convert variations to the expected format
-        val variationsForCart = selectedVariations.mapValues { entry ->
-            VariationOption(
-                name = entry.value.name,
-                priceAdjustment = entry.value.priceAdjustment
-            )
-        }
-
-        // Convert modifiers to the expected format
-        val modifiersForCart = item.modifierGroups?.flatMap { group ->
-            group.modifiers.filter { modifier ->
-                selectedModifierIds[group.id]?.contains(modifier.id) == true
-            }.map { modifier ->
-                CartItemWithModifiers.ModifierData(
-                    groupId = group.id,
-                    groupName = group.name,
-                    modifierId = modifier.id,
-                    modifierName = modifier.name,
-                    priceAdjustment = modifier.priceAdjustment
-                )
-            }
-        } ?: emptyList()
-
-        val cartItem = CartItemWithModifiers(
-            id = item.id,
-            name = item.name,
-            price = item.price,
-            quantity = quantity,
-            variations = variationsForCart,
-            modifiers = modifiersForCart
-        )
-
-        addCartItem(cartItem)
-    }
-
-    /**
-     * Simple add to cart for items without variations/modifiers
-     */
-    fun addSimpleItemToCart(item: Item, quantity: Int = 1) {
-        val cartItem = CartItemWithModifiers(
-            id = item.id,
-            name = item.name,
-            price = item.price,
-            quantity = quantity,
-            variations = emptyMap(),
-            modifiers = emptyList()
-        )
-
-        addCartItem(cartItem)
-    }
-
-    /**
-     * Add custom item to cart
-     */
-    fun addCustomItemToCart(customItem: CustomItem) {
-        val cartItem = CartItemWithModifiers(
-            id = "custom_${System.currentTimeMillis()}",
-            name = customItem.name,
-            price = customItem.price,
-            quantity = 1,
-            variations = emptyMap(),
-            modifiers = emptyList(),
-            notes = customItem.notes.toString()
-        )
-
-        addCartItem(cartItem)
-    }
-
-    /**
-     * Add cart item and update totals
-     */
-    fun addCartItem(cartItem: CartItemWithModifiers) {
+    fun addCartItem(item: CartItemWithModifiers) {
         val currentItems = _cartItems.value.toMutableList()
 
-        // Check if item already exists with same variations and modifiers
-        val existingItemIndex = currentItems.indexOfFirst {
-            it.id == cartItem.id &&
-                    it.variations == cartItem.variations &&
-                    it.modifiers == cartItem.modifiers
+        // Check if item with same variations and modifiers exists
+        val existingItemIndex = currentItems.indexOfFirst { cartItem ->
+            cartItem.id == item.id &&
+                    cartItem.variations == item.variations &&
+                    cartItem.modifiers == item.modifiers
         }
 
         if (existingItemIndex != -1) {
-            // Update quantity if item already exists
-            currentItems[existingItemIndex] = currentItems[existingItemIndex].copy(
-                quantity = currentItems[existingItemIndex].quantity + cartItem.quantity
+            // Update quantity of existing item
+            val existingItem = currentItems[existingItemIndex]
+            currentItems[existingItemIndex] = existingItem.copy(
+                quantity = existingItem.quantity + item.quantity
             )
         } else {
             // Add new item
-            currentItems.add(cartItem)
+            currentItems.add(item)
         }
 
-        _cartItems.value = currentItems
-        updateCartSummary()
+        updateCart(currentItems)
     }
 
     /**
      * Remove item from cart
      */
     fun removeItem(itemId: String) {
-        _cartItems.value = _cartItems.value.filter { it.id != itemId }
-        updateCartSummary()
+        val currentItems = _cartItems.value.toMutableList()
+        currentItems.removeAll { it.id == itemId }
+        updateCart(currentItems)
     }
 
     /**
@@ -146,50 +64,35 @@ class CartRepository {
             return
         }
 
-        _cartItems.value = _cartItems.value.map { item ->
-            if (item.id == itemId) {
-                item.copy(quantity = newQuantity)
-            } else {
-                item
-            }
+        val currentItems = _cartItems.value.toMutableList()
+        val itemIndex = currentItems.indexOfFirst { it.id == itemId }
+
+        if (itemIndex != -1) {
+            currentItems[itemIndex] = currentItems[itemIndex].copy(quantity = newQuantity)
+            updateCart(currentItems)
         }
-        updateCartSummary()
     }
 
     /**
-     * Clear cart
+     * Clear all items from cart
      */
     fun clearCart() {
-        _cartItems.value = emptyList()
-        updateCartSummary()
+        updateCart(emptyList())
     }
 
     /**
-     * Update cart summary (count and total)
+     * Update cart state and calculate totals
      */
-    private fun updateCartSummary() {
-        val items = _cartItems.value
+    private fun updateCart(items: List<CartItemWithModifiers>) {
+        _cartItems.value = items
         _cartCount.value = items.sumOf { it.quantity }
-        _cartTotal.value = items.sumOf { item ->
-            // Calculate base price + variations + modifiers
-            val basePrice = item.price
-            val variationsPrice = item.variations.values.sumOf { it.priceAdjustment }
-            val modifiersPrice = item.modifiers.sumOf { it.priceAdjustment }
-            val totalUnitPrice = basePrice + variationsPrice + modifiersPrice
-
-            totalUnitPrice * item.quantity
-        }
+        _cartTotal.value = items.sumOf { it.totalPrice }
     }
 
     /**
-     * Get total price for a specific cart item
+     * Get cart item by ID
      */
-    fun getItemTotal(item: CartItemWithModifiers): Double {
-        val basePrice = item.price
-        val variationsPrice = item.variations.values.sumOf { it.priceAdjustment }
-        val modifiersPrice = item.modifiers.sumOf { it.priceAdjustment }
-        val totalUnitPrice = basePrice + variationsPrice + modifiersPrice
-
-        return totalUnitPrice * item.quantity
+    fun getCartItem(itemId: String): CartItemWithModifiers? {
+        return _cartItems.value.find { it.id == itemId }
     }
 }

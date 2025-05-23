@@ -17,6 +17,7 @@ private const val TAG = "SecureCredentialStore"
 
 /**
  * Secure store for credentials and device information
+ * FIXED to properly handle all device data fields
  */
 class SecureCredentialStore(context: Context) {
 
@@ -34,8 +35,9 @@ class SecureCredentialStore(context: Context) {
 
     private val gson = Gson()
 
-
-
+    /**
+     * FIXED: Save device info with proper field mapping
+     */
     fun saveDeviceInfo(deviceData: DeviceData) {
         Log.d(TAG, "Saving device info: $deviceData")
 
@@ -45,15 +47,71 @@ class SecureCredentialStore(context: Context) {
         editor.putString(KEY_DEVICE_ID, deviceData.id)
         editor.putString(KEY_DEVICE_ALIAS, deviceData.alias)
 
-        // Save optional device information
+        // FIXED: Save all available device information with null checks
         deviceData.branchId?.let { editor.putString(KEY_BRANCH_ID, it) }
         deviceData.companyId?.let { editor.putString(KEY_COMPANY_ID, it) }
         deviceData.companySchema?.let { editor.putString(KEY_COMPANY_SCHEMA, it) }
         deviceData.tableId?.let { editor.putString(KEY_TABLE_ID, it) }
+        deviceData.serialNumber?.let { editor.putString(KEY_SERIAL_NUMBER, it) }
+        deviceData.model?.let { editor.putString(KEY_DEVICE_MODEL, it) }
+        deviceData.appVersion?.let { editor.putString(KEY_APP_VERSION, it) }
+        deviceData.appMode?.let { editor.putString(KEY_DEVICE_APP_MODE, it) }
+        deviceData.lastSync?.let { editor.putString(KEY_LAST_SYNC, it) }
+
         editor.putBoolean(KEY_IS_ACTIVE, deviceData.isActive)
+        editor.putBoolean(KEY_IS_DASHBOARD_DEVICE, deviceData.isDashboardDevice ?: false)
+
+        // FIXED: Save branch information as JSON if available
+        deviceData.branch?.let { branch ->
+            val branchJson = gson.toJson(branch)
+            editor.putString(KEY_BRANCH_DATA, branchJson)
+
+            // Also save branch company ID if available
+            branch.companyId?.let { companyId ->
+                editor.putString(KEY_COMPANY_ID, companyId)
+            }
+        }
 
         // Apply changes
         editor.apply()
+
+        Log.d(TAG, "Device info saved successfully")
+    }
+
+    /**
+     * FIXED: Get complete device data
+     */
+    fun getDeviceData(): DeviceData? {
+        val deviceId = preferences.getString(KEY_DEVICE_ID, null) ?: return null
+        val deviceAlias = preferences.getString(KEY_DEVICE_ALIAS, null) ?: return null
+
+        // Get branch data if available
+        val branchJson = preferences.getString(KEY_BRANCH_DATA, null)
+        val branchData = if (branchJson != null) {
+            try {
+                gson.fromJson(branchJson, com.rfm.quickpos.data.remote.models.BranchData::class.java)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error parsing branch data", e)
+                null
+            }
+        } else null
+
+        return DeviceData(
+            id = deviceId,
+            alias = deviceAlias,
+            branchId = preferences.getString(KEY_BRANCH_ID, null),
+            companyId = preferences.getString(KEY_COMPANY_ID, null),
+            companySchema = preferences.getString(KEY_COMPANY_SCHEMA, null),
+            tableId = preferences.getString(KEY_TABLE_ID, null),
+            isActive = preferences.getBoolean(KEY_IS_ACTIVE, true),
+            serialNumber = preferences.getString(KEY_SERIAL_NUMBER, null),
+            model = preferences.getString(KEY_DEVICE_MODEL, null),
+            appVersion = preferences.getString(KEY_APP_VERSION, null),
+            appMode = preferences.getString(KEY_DEVICE_APP_MODE, null),
+            isDashboardDevice = preferences.getBoolean(KEY_IS_DASHBOARD_DEVICE, false),
+            lastSync = preferences.getString(KEY_LAST_SYNC, null),
+            branch = branchData
+        )
     }
 
     // Add a new method to save app mode directly
@@ -98,7 +156,7 @@ class SecureCredentialStore(context: Context) {
         return preferences.getString(KEY_BUSINESS_TYPE, null)
     }
 
-    // In SecureCredentialStore.kt
+    // FIXED: Enhanced auth token handling with better JWT parsing
     fun saveAuthToken(token: String?) {
         if (token == null) {
             Log.w(TAG, "Attempted to save null auth token, ignoring")
@@ -119,7 +177,7 @@ class SecureCredentialStore(context: Context) {
     }
 
     /**
-     * Decode JWT token and save essential information
+     * FIXED: Enhanced JWT decoding with better error handling
      */
     private fun decodeAndSaveJwtInfo(token: String) {
         try {
@@ -131,20 +189,24 @@ class SecureCredentialStore(context: Context) {
 
             // Base64 decode the payload
             val payload = parts[1]
+            // Add padding if necessary
+            val paddedPayload = payload + "=".repeat((4 - payload.length % 4) % 4)
             val decodedBytes = android.util.Base64.decode(
-                payload.replace("-", "+").replace("_", "/"),
+                paddedPayload.replace("-", "+").replace("_", "/"),
                 android.util.Base64.DEFAULT
             )
             val decodedJson = String(decodedBytes)
+
+            Log.d(TAG, "Decoded JWT payload: $decodedJson")
 
             // Parse payload JSON
             val jwtPayload = gson.fromJson(decodedJson, JwtPayload::class.java)
 
             // Save important information
             val editor = preferences.edit()
-            editor.putString(KEY_COMPANY_SCHEMA, jwtPayload.schemaName)
-            editor.putString(KEY_COMPANY_ID, jwtPayload.companyId)
-            editor.putString(KEY_BUSINESS_TYPE, jwtPayload.businessType)
+            jwtPayload.schemaName?.let { editor.putString(KEY_COMPANY_SCHEMA, it) }
+            jwtPayload.companyId?.let { editor.putString(KEY_COMPANY_ID, it) }
+            jwtPayload.businessType?.let { editor.putString(KEY_BUSINESS_TYPE, it) }
             editor.apply()
 
             Log.d(TAG, "JWT info decoded and saved: schema=${jwtPayload.schemaName}, " +
@@ -247,5 +309,13 @@ class SecureCredentialStore(context: Context) {
         private const val KEY_UI_MODE = "app_mode"
         private const val KEY_USER_DATA = "user_data"
         private const val KEY_BUSINESS_TYPE = "business_type"
+
+        // FIXED: Add new keys for enhanced device data
+        private const val KEY_DEVICE_MODEL = "device_model"
+        private const val KEY_APP_VERSION = "app_version"
+        private const val KEY_DEVICE_APP_MODE = "device_app_mode"
+        private const val KEY_IS_DASHBOARD_DEVICE = "is_dashboard_device"
+        private const val KEY_LAST_SYNC = "last_sync"
+        private const val KEY_BRANCH_DATA = "branch_data"
     }
 }
